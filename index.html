@@ -1200,6 +1200,7 @@ function renderProjectsPage() {
 }
 
 function addProject() {
+  if (!checkPIN()) return;
   const input = document.getElementById('newProjectInput');
   const name = input.value.trim();
   if (!name) { alert('Please enter a project name.'); return; }
@@ -1217,6 +1218,7 @@ function addProject() {
 }
 
 function removeProject(idx) {
+  if (!checkPIN()) return;
   const name = state.deals[idx];
   if (!confirm('Remove "' + name + '" from the project list?')) return;
   state.deals.splice(idx, 1);
