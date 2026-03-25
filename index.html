@@ -58,7 +58,11 @@
     position: sticky;
     top: 60px;
     z-index: 99;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
   }
+  .nav-bar::-webkit-scrollbar { height: 4px; }
+  .nav-bar::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 4px; }
   .nav-btn {
     padding: 12px 16px;
     border: none;
@@ -559,7 +563,9 @@
       <div class="card-body">
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showChangePIN()">Change Manager PIN</button>
+          <button class="btn btn-outline btn-sm" onclick="resetPIN()">Forgot PIN</button>
           <button class="btn btn-purple btn-sm" onclick="archiveCurrentWeek()">Archive This Week</button>
+          <button class="btn btn-outline btn-sm" id="undoRemoveBtn" onclick="undoRemoveStaff()" style="display:none;color:var(--accent)">Undo Remove Staff</button>
           <span style="font-size:12px;color:var(--gray-500)">PIN is required to remove staff or access manager settings.</span>
         </div>
       </div>
@@ -672,6 +678,18 @@ function checkPIN() {
     return false;
   }
   return true;
+}
+
+function resetPIN() {
+  const answer = prompt('Security question: What is the department name?\n(Hint: shown in the page title)');
+  if (!answer) return;
+  if (answer.trim().toLowerCase() === 'investment development') {
+    setManagerPIN(DEFAULT_PIN);
+    alert('PIN has been reset to the default. Please change it immediately.');
+    showChangePIN();
+  } else {
+    alert('Incorrect answer. Contact your IT administrator for help.');
+  }
 }
 
 function showChangePIN() {
@@ -915,6 +933,12 @@ function buildStaffHTML(s, idx) {
           </tbody>
         </table>
       </div>
+      <div style="padding:12px 20px;background:var(--gray-50);border-top:2px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;color:var(--gray-500)">Available: <strong>${availDays} days (${availDays * 8}h)</strong></span>
+        <span style="font-size:15px;font-weight:700;color:${(() => { const th = s.tasks.reduce((sum,t) => sum + (parseInt(t.hours)||0), 0); return th > availDays*8 ? 'var(--red)' : 'var(--primary)'; })()}"}>
+          Total planned: ${s.tasks.reduce((sum,t) => sum + (parseInt(t.hours)||0), 0)}h
+        </span>
+      </div>
       <div class="actions" style="flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="editStaffInfo(${idx})">Edit Staff Info (Manager)</button>
         <button class="btn btn-danger btn-sm" onclick="removeStaff(${idx})">Remove Staff</button>
@@ -1035,6 +1059,22 @@ function markSubmitted(idx) {
   const s = state.staff[idx];
   const issues = [];
 
+  // Full leave — allow submit with just bandwidth (no tasks needed)
+  if (s.daysOff === 5) {
+    if (!s.bandwidth) issues.push('Bandwidth not selected');
+    if (issues.length > 0) {
+      alert('Please fix before submitting:\n\n• ' + issues.join('\n• '));
+      return;
+    }
+    s.submitted = true;
+    s.submittedAt = new Date().toISOString();
+    s.revision = false;
+    saveState();
+    rebuildStaffPage(idx);
+    showToast(s.name + ' — marked as on leave.');
+    return;
+  }
+
   // Check availability fields
   if (!s.workload) issues.push('Workload Level not selected');
   if (!s.bandwidth) issues.push('Bandwidth not selected');
@@ -1046,13 +1086,22 @@ function markSubmitted(idx) {
   }
 
   // Check tasks with deals have hours, type, priority, and dates
+  const availHours = (5 - (s.daysOff || 0)) * 8;
+  let totalHours = 0;
   activeTasks.forEach((t, i) => {
-    if (!t.hours) issues.push('Task "' + t.deal + '" is missing hours');
+    const h = parseInt(t.hours) || 0;
+    if (!t.hours || h <= 0) issues.push('Task "' + t.deal + '" is missing hours');
     if (!t.type) issues.push('Task "' + t.deal + '" is missing type');
     if (!t.priority) issues.push('Task "' + t.deal + '" is missing priority');
     if (!t.start) issues.push('Task "' + t.deal + '" is missing start date');
     if (!t.end) issues.push('Task "' + t.deal + '" is missing end date');
+    totalHours += h;
   });
+
+  // Warn if total hours exceed available hours
+  if (totalHours > availHours && issues.length === 0) {
+    if (!confirm('Total planned hours (' + totalHours + 'h) exceed available capacity (' + availHours + 'h for ' + (5 - (s.daysOff||0)) + ' days). Submit anyway?')) return;
+  }
 
   if (issues.length > 0) {
     alert('Please fix before submitting:\n\n• ' + issues.join('\n• '));
@@ -1067,20 +1116,39 @@ function markSubmitted(idx) {
   showToast(s.name + ' — plan submitted!');
 }
 
+let lastRemovedStaff = null;
+
 function removeStaff(idx) {
   const name = state.staff[idx].name || 'this staff member';
   if (!checkPIN()) return;
-  if (!confirm('Remove ' + name + '? This cannot be undone.')) return;
+  if (!confirm('Remove ' + name + '?\n\nYou can undo this from the Dashboard within this session.')) return;
+  lastRemovedStaff = JSON.parse(JSON.stringify(state.staff[idx]));
   state.staff.splice(idx, 1);
   saveState();
   buildNav();
   buildStaffPages();
   switchPage('dashboard');
-  showToast(name + ' removed.');
+  showToast(name + ' removed. Click "Undo Remove" on Dashboard to restore.');
+}
+
+function undoRemoveStaff() {
+  if (!lastRemovedStaff) { alert('Nothing to undo.'); return; }
+  state.staff.push(lastRemovedStaff);
+  saveState();
+  const name = lastRemovedStaff.name;
+  lastRemovedStaff = null;
+  buildNav();
+  buildStaffPages();
+  renderDashboard();
+  showToast(name + ' restored.');
 }
 
 // ========== DASHBOARD ==========
 function renderDashboard() {
+  // Show/hide undo button
+  const undoBtn = document.getElementById('undoRemoveBtn');
+  if (undoBtn) undoBtn.style.display = lastRemovedStaff ? 'inline-block' : 'none';
+
   const active = state.staff.filter(s => s.name);
   const submitted = active.filter(s => s.submitted);
   const pending = active.filter(s => !s.submitted);
@@ -1851,26 +1919,31 @@ function initGlobalWeek() {
         saveArchives(archives);
       }
 
-      // Reset all staff for the new week
+      // Reset statuses but KEEP tasks (they may span multiple weeks — staff can clear them)
       state.staff.forEach(s => {
         s.submitted = false;
         s.submittedAt = '';
         s.revision = false;
         s.revisionNote = '';
         s.lastEdited = '';
-        // Clear tasks for fresh week
         s.daysOff = 0;
         s.workload = '';
         s.bandwidth = '';
         s.comments = '';
-        s.tasks = s.tasks.map(() => ({deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''}));
+        // Keep task deal names (multi-week projects) but clear hours/dates for fresh entry
+        s.tasks = s.tasks.map(t => ({deal: t.deal, type: t.type, start:'', end:'', priority: t.priority, hours:'', notes:''}));
       });
       saveState();
+
+      // Calculate how many weeks were skipped
+      const oldDate = new Date(saved + 'T00:00:00');
+      const newDate = new Date(comingSunday + 'T00:00:00');
+      const weeksSkipped = Math.round((newDate - oldDate) / (7 * 24 * 60 * 60 * 1000));
 
       // Advance to coming Sunday
       el.value = comingSunday;
       localStorage.setItem('id_timesheet_weekof', comingSunday);
-      showToast('Week auto-advanced to ' + comingSunday + '. Previous week archived.');
+      showToast('Week auto-advanced' + (weeksSkipped > 1 ? ' (' + weeksSkipped + ' weeks jumped)' : '') + '. Previous week archived.');
     }
   } else {
     el.value = comingSunday;
