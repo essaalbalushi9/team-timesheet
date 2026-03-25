@@ -563,8 +563,10 @@
       <div class="card-body">
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showChangePIN()">Change Manager PIN</button>
+          <button class="btn btn-outline btn-sm" onclick="managerEditStaff()">Edit Staff Info</button>
+          <button class="btn btn-danger btn-sm" onclick="managerRemoveStaff()">Remove Staff</button>
           <button class="btn btn-outline btn-sm" id="undoRemoveBtn" onclick="undoRemoveStaff()" style="display:none;color:var(--accent)">Undo Remove Staff</button>
-          <span style="font-size:12px;color:var(--gray-500)">PIN is required to remove staff or access manager settings.</span>
+          <span style="font-size:12px;color:var(--gray-500)">All actions require manager PIN.</span>
         </div>
       </div>
     </div>
@@ -704,32 +706,6 @@ function saveArchives(archives) {
   localStorage.setItem('id_timesheet_archives', JSON.stringify(archives));
 }
 
-function archiveCurrentWeek() {
-  if (!checkPIN()) return;
-  (function() {
-    const weekOf = getGlobalWeek();
-    if (!weekOf) { alert('No week selected.'); return; }
-
-    const archives = loadArchives();
-    // Check if this week already archived
-    const existing = archives.findIndex(a => a.weekOf === weekOf);
-    if (existing >= 0) {
-      if (!confirm('Week of ' + weekOf + ' is already archived. Overwrite?')) return;
-      archives.splice(existing, 1);
-    }
-
-    const snapshot = {
-      weekOf: weekOf,
-      archivedAt: new Date().toISOString(),
-      staff: JSON.parse(JSON.stringify(state.staff))
-    };
-    archives.push(snapshot);
-    archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf)); // newest first
-    saveArchives(archives);
-    showToast('Week of ' + weekOf + ' archived!');
-  })();
-}
-
 // ========== NAVIGATION ==========
 function buildNav() {
   const nav = document.getElementById('navBar');
@@ -824,6 +800,8 @@ function buildStaffHTML(s, idx) {
   const availDays = 5 - (s.daysOff || 0);
   const capacityPct = Math.round((availDays / 5) * 100);
   const locked = s.submitted; // lock form after submission
+  const totalPlannedHours = s.tasks.reduce((sum,t) => sum + (parseInt(t.hours)||0), 0);
+  const totalHoursColor = totalPlannedHours > availDays * 8 ? 'var(--red)' : 'var(--primary)';
 
   return `
     <div class="card">
@@ -921,17 +899,15 @@ function buildStaffHTML(s, idx) {
       </div>
       <div style="padding:12px 20px;background:var(--gray-50);border-top:2px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:13px;color:var(--gray-500)">Available: <strong>${availDays} days (${availDays * 8}h)</strong></span>
-        <span style="font-size:15px;font-weight:700;color:${(() => { const th = s.tasks.reduce((sum,t) => sum + (parseInt(t.hours)||0), 0); return th > availDays*8 ? 'var(--red)' : 'var(--primary)'; })()}"}>
-          Total planned: ${s.tasks.reduce((sum,t) => sum + (parseInt(t.hours)||0), 0)}h
+        <span style="font-size:15px;font-weight:700;color:${totalHoursColor}">
+          Total planned: ${totalPlannedHours}h
         </span>
       </div>
       <div class="actions" style="flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="editStaffInfo(${idx})">Edit Staff Info (Manager)</button>
-        <button class="btn btn-danger btn-sm" onclick="removeStaff(${idx})">Remove Staff</button>
         ${getPreviousWeekButton(idx)}
         <span style="flex:1"></span>
         <button class="btn ${s.submitted ? 'btn-outline' : s.revision ? 'btn-danger' : 'btn-accent'}" onclick="markSubmitted(${idx})">${s.submitted ? '✓ Submitted' : s.revision ? '⚠ Re-submit Plan' : 'Submit Plan'}</button>
-        <button class="btn btn-primary" onclick="saveAndNotify()">Save Draft</button>
+        <button class="btn btn-primary" onclick="saveAndNotify()">Save</button>
       </div>
     </div>
   `;
@@ -1023,8 +999,35 @@ function addStaff() {
   showToast(name.trim() + ' added.');
 }
 
-function editStaffInfo(idx) {
+function managerEditStaff() {
   if (!checkPIN()) return;
+  const names = state.staff.filter(s => s.name).map((s,i) => (i+1) + '. ' + s.name);
+  const pick = prompt('Which staff to edit?\n\n' + names.join('\n') + '\n\nEnter number:');
+  if (!pick) return;
+  const idx = parseInt(pick) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= state.staff.length || !state.staff[idx].name) { alert('Invalid selection.'); return; }
+  editStaffInfoDirect(idx);
+}
+
+function managerRemoveStaff() {
+  if (!checkPIN()) return;
+  const names = state.staff.filter(s => s.name).map((s,i) => (i+1) + '. ' + s.name);
+  const pick = prompt('Which staff to remove?\n\n' + names.join('\n') + '\n\nEnter number:');
+  if (!pick) return;
+  const idx = parseInt(pick) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= state.staff.length || !state.staff[idx].name) { alert('Invalid selection.'); return; }
+  const name = state.staff[idx].name;
+  if (!confirm('Remove ' + name + '?\n\nYou can undo this from the Dashboard within this session.')) return;
+  lastRemovedStaff = JSON.parse(JSON.stringify(state.staff[idx]));
+  state.staff.splice(idx, 1);
+  saveState();
+  buildNav();
+  buildStaffPages();
+  renderDashboard();
+  showToast(name + ' removed. Click "Undo Remove Staff" to restore.');
+}
+
+function editStaffInfoDirect(idx) {
   const s = state.staff[idx];
   const newName = prompt('Name:', s.name);
   if (newName === null) return;
@@ -1203,18 +1206,6 @@ function markSubmitted(idx) {
 
 let lastRemovedStaff = null;
 
-function removeStaff(idx) {
-  const name = state.staff[idx].name || 'this staff member';
-  if (!checkPIN()) return;
-  if (!confirm('Remove ' + name + '?\n\nYou can undo this from the Dashboard within this session.')) return;
-  lastRemovedStaff = JSON.parse(JSON.stringify(state.staff[idx]));
-  state.staff.splice(idx, 1);
-  saveState();
-  buildNav();
-  buildStaffPages();
-  switchPage('dashboard');
-  showToast(name + ' removed. Click "Undo Remove" on Dashboard to restore.');
-}
 
 function undoRemoveStaff() {
   if (!lastRemovedStaff) { alert('Nothing to undo.'); return; }
@@ -1385,6 +1376,7 @@ function renderArchivePage() {
             ${archives.map((a,i) => `<option value="${i}">Week of ${a.weekOf} (archived ${new Date(a.archivedAt).toLocaleDateString()})</option>`).join('')}
           </select>
           <button class="btn btn-danger btn-sm" onclick="deleteArchive()">Delete This Week</button>
+          ${lastDeletedArchive ? '<button class="btn btn-outline btn-sm" style="color:var(--accent)" onclick="undoDeleteArchive()">Undo Delete</button>' : ''}
         </div>
         <div id="archivedWeekDetail"></div>
       </div>
@@ -1415,12 +1407,8 @@ function renderArchivedWeekDetail() {
   // Determine edit permissions: within 1 week = staff can edit, older = manager PIN
   const archDate = new Date(arch.weekOf + 'T00:00:00');
   const today = new Date(); today.setHours(0,0,0,0);
-  const daysSince = Math.floor((today - archDate) / (24*60*60*1000));
-  const withinGrace = daysSince <= 14; // ~2 Sundays = 1 full work week buffer
-  const needsPIN = daysSince > 14;
-
   let html = `<h4 style="margin-bottom:4px">Week of ${arch.weekOf} — ${active.length} staff</h4>`;
-  html += `<p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">${daysSince <= 14 ? 'Within grace period — staff can update their entries below.' : 'Grace period expired — only managers can edit.'}</p>`;
+  html += `<p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">Manager view — click Edit to update any staff member's data.</p>`;
 
   // Availability snapshot
   html += `<div class="table-wrap"><table class="dash-table">
@@ -1433,7 +1421,7 @@ function renderArchivedWeekDetail() {
       <td><strong>${esc(s.name)}</strong></td><td>${esc(s.role)}</td>
       <td>${s.daysOff||0}</td><td>${avail}</td>
       <td>${esc(s.workload||'-')}</td><td>${esc(s.bandwidth||'-')}</td>
-      <td><button class="btn btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="editArchivedStaff(${idx},${realSi},${needsPIN})">Edit</button></td></tr>`;
+      <td><button class="btn btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="editArchivedStaff(${idx},${realSi},false)">Edit</button></td></tr>`;
   });
   html += `</tbody></table></div>`;
 
@@ -1466,16 +1454,31 @@ function unlockArchive() {
   showToast('Archive unlocked for this session.');
 }
 
+let lastDeletedArchive = null;
+
 function deleteArchive() {
   if (!checkPIN()) return;
   const archives = loadArchives();
   const sel = document.getElementById('archiveWeekSelect');
   const idx = parseInt(sel.value);
   if (!confirm('Delete archive for week of ' + archives[idx].weekOf + '?')) return;
+  lastDeletedArchive = JSON.parse(JSON.stringify(archives[idx]));
   archives.splice(idx, 1);
   saveArchives(archives);
   renderArchivePage();
-  showToast('Archive deleted.');
+  showToast('Archive deleted. Click "Undo Delete" to restore.');
+}
+
+function undoDeleteArchive() {
+  if (!lastDeletedArchive) { alert('Nothing to undo.'); return; }
+  const archives = loadArchives();
+  archives.push(lastDeletedArchive);
+  archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf));
+  saveArchives(archives);
+  const weekOf = lastDeletedArchive.weekOf;
+  lastDeletedArchive = null;
+  renderArchivePage();
+  showToast('Week of ' + weekOf + ' restored.');
 }
 
 function editArchivedStaff(archIdx, staffIdx, needsPIN) {
@@ -1699,8 +1702,8 @@ function renderInstructionsPage() {
         <div class="instructions-step">
           <div class="step-num">5</div>
           <div class="step-content">
-            <h4>Save Draft or Submit</h4>
-            <p>"Save Draft" saves your work in progress. When you're done, click "Submit Plan" — it checks all required fields (hours, type, priority, dates) and marks you as submitted on the Dashboard.</p>
+            <h4>Save or Submit</h4>
+            <p>Your changes save automatically as you type. Click "Save" anytime for confirmation. When you're done, click "Submit Plan" — it checks all required fields (hours, type, priority, dates) and marks you as submitted on the Dashboard. After submitting, your plan is locked.</p>
           </div>
         </div>
 
@@ -1708,7 +1711,7 @@ function renderInstructionsPage() {
           <div class="step-num">6</div>
           <div class="step-content">
             <h4>Submit by Thursday EOD</h4>
-            <p>Complete your plan before Thursday end of day. The submission date is set automatically — you don't need to change it.</p>
+            <p>Complete your plan before Thursday end of day. The submission date and week advance automatically — you don't need to change anything. If you miss a week, a purple "Update Previous Week" button appears on your tab for a limited time.</p>
           </div>
         </div>
 
@@ -1722,8 +1725,9 @@ function renderInstructionsPage() {
             <ul>
               <li>Fill in your own weekly plan</li>
               <li>Click "Submit Plan" when done — it validates all fields first</li>
-              <li>View the Dashboard (read-only summary)</li>
+              <li>View the Dashboard summary</li>
               <li>View and add to the Projects list</li>
+              <li>Update a missed previous week within the grace period (purple button on your tab)</li>
               <li>If a manager requests revision, a red banner appears on your page</li>
             </ul>
           </div>
@@ -1732,12 +1736,12 @@ function renderInstructionsPage() {
             <ul>
               <li>Everything staff can do, plus:</li>
               <li>Add or remove staff members (with undo option)</li>
+              <li>Edit staff details (name, role, manager)</li>
               <li>Remove projects from the list</li>
               <li>Request revision on submitted plans</li>
-              <li>View archived weeks and long-term records</li>
-              <li>View archives & staff analytics</li>
+              <li>View archives, staff analytics, and edit past weeks</li>
               <li>Change the manager PIN</li>
-              <li>Set the "Week of" date for everyone</li>
+              <li>Override the "Week of" date</li>
             </ul>
           </div>
         </div>
@@ -2172,6 +2176,12 @@ function autoFillSubmissionDate(idx) {
 document.getElementById('globalWeek').addEventListener('change', function() {
   const oldWeek = localStorage.getItem('id_timesheet_weekof');
   const newWeek = this.value;
+
+  // Manager-only: require PIN to change week manually
+  if (!checkPIN()) {
+    this.value = oldWeek; // revert
+    return;
+  }
 
   // Auto-archive previous week if it has data (prevents accidental loss)
   if (oldWeek && oldWeek !== newWeek) {
