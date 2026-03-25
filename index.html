@@ -1113,7 +1113,8 @@ function renderArchivedWeekDetail() {
 function unlockArchive() {
   verifyManager(() => {
     sessionStorage.setItem('id_timesheet_archive_unlocked', 'true');
-    renderArchivePage();
+    // Re-navigate to archive so it renders properly as active page
+    switchPage('archive');
     showToast('Archive unlocked for this session.');
   });
 }
