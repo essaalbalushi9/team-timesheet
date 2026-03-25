@@ -74,6 +74,8 @@
   .nav-btn.active { color: var(--primary); border-bottom-color: var(--accent); font-weight: 600; }
   .nav-btn.dashboard-btn { color: var(--accent); font-weight: 600; }
   .nav-btn.dashboard-btn.active { border-bottom-color: var(--accent); }
+  .nav-btn.archive-btn { color: #805ad5; font-weight: 600; }
+  .nav-btn.archive-btn.active { border-bottom-color: #805ad5; }
 
   /* Main content */
   .main { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
@@ -95,6 +97,7 @@
     font-size: 15px;
     font-weight: 600;
   }
+  .card-header.purple { background: #805ad5; }
   .card-body { padding: 20px; }
 
   /* Staff header */
@@ -205,6 +208,8 @@
   .btn-sm { padding: 6px 12px; font-size: 12px; }
   .btn-danger { background: var(--red); color: white; }
   .btn-danger:hover { background: #c53030; }
+  .btn-purple { background: #805ad5; color: white; }
+  .btn-purple:hover { background: #6b46c1; }
 
   .actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
 
@@ -236,6 +241,7 @@
   .stat-yellow .number { color: var(--accent); }
   .stat-red .number { color: var(--red); }
   .stat-blue .number { color: var(--primary); }
+  .stat-purple .number { color: #805ad5; }
 
   /* Dashboard table */
   .dash-table { width: 100%; border-collapse: collapse; }
@@ -268,6 +274,7 @@
   .badge-red { background: #fed7d7; color: #822727; }
   .badge-blue { background: #bee3f8; color: #2a4365; }
   .badge-gray { background: var(--gray-200); color: var(--gray-700); }
+  .badge-purple { background: #e9d8fd; color: #553c9a; }
 
   .priority-high { color: var(--red); font-weight: 600; }
   .priority-medium { color: var(--accent); font-weight: 600; }
@@ -332,10 +339,117 @@
     font-size: 14px;
   }
 
+  /* PIN Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+  }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    text-align: center;
+  }
+  .modal h3 { margin-bottom: 8px; font-size: 18px; }
+  .modal p { color: var(--gray-500); font-size: 14px; margin-bottom: 20px; }
+  .modal input {
+    text-align: center;
+    font-size: 24px;
+    letter-spacing: 8px;
+    max-width: 180px;
+    margin: 0 auto 16px;
+  }
+  .modal .modal-actions { display: flex; gap: 10px; justify-content: center; }
+  .modal .error-msg { color: var(--red); font-size: 13px; margin-top: 8px; display: none; }
+
+  /* Analytics bars */
+  .bar-chart { margin: 16px 0; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 12px;
+  }
+  .bar-label { min-width: 100px; font-size: 13px; font-weight: 600; text-align: right; }
+  .bar-track {
+    flex: 1;
+    height: 28px;
+    background: var(--gray-100);
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    transition: width 0.5s ease;
+    min-width: fit-content;
+  }
+  .bar-value { min-width: 50px; font-size: 13px; font-weight: 600; }
+
+  /* Staff analytics card */
+  .analytics-staff-card {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .analytics-staff-header {
+    background: var(--gray-50);
+    padding: 14px 20px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+  .analytics-staff-header:hover { background: var(--gray-100); }
+  .analytics-staff-body { padding: 20px; display: none; }
+  .analytics-staff-body.open { display: block; }
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .analytics-metric {
+    text-align: center;
+    padding: 12px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+  }
+  .analytics-metric .metric-value { font-size: 24px; font-weight: 700; color: var(--primary); }
+  .analytics-metric .metric-label { font-size: 11px; color: var(--gray-500); text-transform: uppercase; margin-top: 4px; }
+
+  /* Archive week selector */
+  .archive-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
   @media (max-width: 768px) {
     .topbar h1 { font-size: 16px; }
     .main { padding: 0 12px; margin: 12px auto; }
     .nav-btn { padding: 10px 12px; font-size: 13px; }
+    .bar-label { min-width: 70px; font-size: 12px; }
   }
 </style>
 </head>
@@ -402,9 +516,40 @@
         </table>
       </div>
     </div>
+
+    <!-- Manager Settings -->
+    <div class="card">
+      <div class="card-header">Manager Settings</div>
+      <div class="card-body">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="showChangePIN()">Change Manager PIN</button>
+          <button class="btn btn-purple btn-sm" onclick="archiveCurrentWeek()">Archive This Week</button>
+          <span style="font-size:12px;color:var(--gray-500)">PIN is required to remove staff or access manager settings.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Archive Page -->
+  <div class="page" id="page-archive">
+    <div id="archiveContent"></div>
   </div>
 
   <!-- Staff pages get injected here -->
+</div>
+
+<!-- PIN Modal -->
+<div class="modal-overlay" id="pinModal" style="display:none">
+  <div class="modal">
+    <h3 id="pinModalTitle">Manager PIN Required</h3>
+    <p id="pinModalDesc">Enter the 4-digit manager PIN to continue.</p>
+    <input type="password" id="pinInput" maxlength="4" placeholder="****" inputmode="numeric" pattern="[0-9]*">
+    <div class="error-msg" id="pinError">Incorrect PIN. Please try again.</div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closePINModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPIN()">Confirm</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -447,12 +592,12 @@ const DEFAULT_STAFF = [
 ];
 
 const ROLES = ["Analyst","Sr. Analyst","Associate","Sr. Associate","VP","Director"];
+const DEFAULT_PIN = '1234';
 
 // ========== STATE ==========
 function loadState() {
   const saved = localStorage.getItem('id_timesheet_data');
   if (saved) return JSON.parse(saved);
-  // Initialize with default staff
   const staff = DEFAULT_STAFF.map(s => ({
     ...s,
     weekDate: '',
@@ -474,11 +619,113 @@ function saveState() {
   localStorage.setItem('id_timesheet_data', JSON.stringify(state));
 }
 
+// ========== PIN SYSTEM ==========
+function getManagerPIN() {
+  return localStorage.getItem('id_timesheet_pin') || DEFAULT_PIN;
+}
+
+function setManagerPIN(newPIN) {
+  localStorage.setItem('id_timesheet_pin', newPIN);
+}
+
+let pinCallback = null;
+
+function verifyManager(callback) {
+  pinCallback = callback;
+  document.getElementById('pinModalTitle').textContent = 'Manager PIN Required';
+  document.getElementById('pinModalDesc').textContent = 'Enter the 4-digit manager PIN to continue.';
+  document.getElementById('pinInput').value = '';
+  document.getElementById('pinError').style.display = 'none';
+  document.getElementById('pinModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('pinInput').focus(), 100);
+}
+
+function submitPIN() {
+  const entered = document.getElementById('pinInput').value;
+  if (entered === getManagerPIN()) {
+    closePINModal();
+    if (pinCallback) pinCallback();
+  } else {
+    document.getElementById('pinError').style.display = 'block';
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinInput').focus();
+  }
+}
+
+function closePINModal() {
+  document.getElementById('pinModal').style.display = 'none';
+  pinCallback = null;
+}
+
+// Enter key submits PIN
+document.getElementById('pinInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitPIN();
+  if (e.key === 'Escape') closePINModal();
+});
+
+function showChangePIN() {
+  verifyManager(() => {
+    const newPIN = prompt('Enter new 4-digit PIN:');
+    if (!newPIN || newPIN.length !== 4 || !/^\d{4}$/.test(newPIN)) {
+      alert('PIN must be exactly 4 digits.');
+      return;
+    }
+    const confirm2 = prompt('Confirm new PIN:');
+    if (newPIN !== confirm2) {
+      alert('PINs do not match. Try again.');
+      return;
+    }
+    setManagerPIN(newPIN);
+    showToast('Manager PIN updated!');
+  });
+}
+
+// ========== ARCHIVE SYSTEM ==========
+function loadArchives() {
+  const saved = localStorage.getItem('id_timesheet_archives');
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveArchives(archives) {
+  localStorage.setItem('id_timesheet_archives', JSON.stringify(archives));
+}
+
+function archiveCurrentWeek() {
+  verifyManager(() => {
+    const weekOf = getGlobalWeek();
+    if (!weekOf) { alert('No week selected.'); return; }
+
+    const archives = loadArchives();
+    // Check if this week already archived
+    const existing = archives.findIndex(a => a.weekOf === weekOf);
+    if (existing >= 0) {
+      if (!confirm('Week of ' + weekOf + ' is already archived. Overwrite?')) return;
+      archives.splice(existing, 1);
+    }
+
+    const snapshot = {
+      weekOf: weekOf,
+      archivedAt: new Date().toISOString(),
+      staff: JSON.parse(JSON.stringify(state.staff))
+    };
+    archives.push(snapshot);
+    archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf)); // newest first
+    saveArchives(archives);
+    showToast('Week of ' + weekOf + ' archived!');
+  });
+}
+
 // ========== NAVIGATION ==========
 function buildNav() {
   const nav = document.getElementById('navBar');
-  // Keep dashboard button, clear the rest
   nav.innerHTML = '<button class="nav-btn dashboard-btn" data-page="dashboard">Dashboard</button>';
+
+  // Archive button
+  const archBtn = document.createElement('button');
+  archBtn.className = 'nav-btn archive-btn';
+  archBtn.dataset.page = 'archive';
+  archBtn.textContent = 'Archive';
+  nav.appendChild(archBtn);
 
   state.staff.forEach((s, i) => {
     const btn = document.createElement('button');
@@ -512,11 +759,11 @@ function switchPage(pageId) {
   if (page) page.classList.add('active');
 
   if (pageId === 'dashboard') renderDashboard();
+  if (pageId === 'archive') renderArchivePage();
 }
 
 // ========== STAFF PAGES ==========
 function buildStaffPages() {
-  // Remove old staff pages
   document.querySelectorAll('.page[id^="page-staff-"]').forEach(p => p.remove());
 
   state.staff.forEach((s, i) => {
@@ -671,12 +918,16 @@ function addStaff() {
 }
 
 function removeStaff(idx) {
-  if (!confirm('Remove ' + (state.staff[idx].name || 'this staff member') + '?')) return;
-  state.staff.splice(idx, 1);
-  saveState();
-  buildNav();
-  buildStaffPages();
-  switchPage('dashboard');
+  const name = state.staff[idx].name || 'this staff member';
+  verifyManager(() => {
+    if (!confirm('Remove ' + name + '? This cannot be undone.')) return;
+    state.staff.splice(idx, 1);
+    saveState();
+    buildNav();
+    buildStaffPages();
+    switchPage('dashboard');
+    showToast(name + ' removed.');
+  });
 }
 
 // ========== DASHBOARD ==========
@@ -685,12 +936,14 @@ function renderDashboard() {
   const submitted = active.filter(s => s.weekDate);
   const available = active.filter(s => s.bandwidth && s.bandwidth.includes('Available'));
   const light = active.filter(s => s.workload && s.workload.includes('Light'));
+  const archCount = loadArchives().length;
 
   document.getElementById('dashStats').innerHTML = `
     <div class="stat-card stat-blue"><div class="number">${active.length}</div><div class="label">Active Staff</div></div>
     <div class="stat-card stat-green"><div class="number">${submitted.length}</div><div class="label">Submitted</div></div>
     <div class="stat-card stat-green"><div class="number">${available.length}</div><div class="label">Available</div></div>
     <div class="stat-card stat-yellow"><div class="number">${light.length}</div><div class="label">Light Workload</div></div>
+    <div class="stat-card stat-purple"><div class="number">${archCount}</div><div class="label">Weeks Archived</div></div>
   `;
 
   // Availability table
@@ -755,6 +1008,320 @@ function renderDashboard() {
   }).join('') : '<tr><td colspan="4" class="empty-state">No tasks yet</td></tr>';
 }
 
+// ========== ARCHIVE PAGE ==========
+function renderArchivePage() {
+  const archives = loadArchives();
+  const container = document.getElementById('archiveContent');
+
+  if (archives.length === 0) {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-body empty-state">
+          <h3 style="margin-bottom:8px">No Archived Weeks Yet</h3>
+          <p>Go to Dashboard and click "Archive This Week" to save the current week's data.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Build archive page
+  let html = '';
+
+  // === Section A: Past Weeks Browser ===
+  html += `
+    <div class="card">
+      <div class="card-header purple">Past Weeks Browser</div>
+      <div class="card-body">
+        <div class="archive-controls">
+          <label style="margin:0">Select Week:</label>
+          <select id="archiveWeekSelect" onchange="renderArchivedWeekDetail()" style="max-width:220px">
+            ${archives.map((a,i) => `<option value="${i}">Week of ${a.weekOf} (archived ${new Date(a.archivedAt).toLocaleDateString()})</option>`).join('')}
+          </select>
+          <button class="btn btn-danger btn-sm" onclick="deleteArchive()">Delete This Week</button>
+        </div>
+        <div id="archivedWeekDetail"></div>
+      </div>
+    </div>`;
+
+  // === Section B: Staff Analytics (across all weeks) ===
+  html += buildStaffAnalytics(archives);
+
+  // === Section C: Team Summary ===
+  html += buildTeamSummary(archives);
+
+  container.innerHTML = html;
+
+  // Render first week detail
+  renderArchivedWeekDetail();
+}
+
+function renderArchivedWeekDetail() {
+  const archives = loadArchives();
+  const sel = document.getElementById('archiveWeekSelect');
+  if (!sel) return;
+  const idx = parseInt(sel.value);
+  const arch = archives[idx];
+  if (!arch) return;
+
+  const active = arch.staff.filter(s => s.name);
+  let html = `<h4 style="margin-bottom:12px">Week of ${arch.weekOf} — ${active.length} staff</h4>`;
+
+  // Availability snapshot
+  html += `<div class="table-wrap"><table class="dash-table">
+    <thead><tr><th>Name</th><th>Role</th><th>Days Off</th><th>Available</th><th>Workload</th><th>Bandwidth</th></tr></thead>
+    <tbody>`;
+  active.forEach(s => {
+    const avail = 5 - (s.daysOff || 0);
+    html += `<tr>
+      <td><strong>${esc(s.name)}</strong></td><td>${esc(s.role)}</td>
+      <td>${s.daysOff||0}</td><td>${avail}</td>
+      <td>${esc(s.workload||'-')}</td><td>${esc(s.bandwidth||'-')}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  // Tasks snapshot
+  html += `<h4 style="margin:16px 0 12px">Tasks</h4><div class="table-wrap"><table class="dash-table">
+    <thead><tr><th>Staff</th><th>Deal</th><th>Type</th><th>Priority</th><th>Hours</th></tr></thead><tbody>`;
+  let hasTasks = false;
+  active.forEach(s => {
+    s.tasks.forEach(t => {
+      if (!t.deal) return;
+      hasTasks = true;
+      html += `<tr><td>${esc(s.name)}</td><td>${esc(t.deal)}</td><td>${esc(t.type||'-')}</td>
+        <td>${esc(t.priority||'-')}</td><td>${t.hours||'-'}</td></tr>`;
+    });
+  });
+  if (!hasTasks) html += '<tr><td colspan="5" class="empty-state">No tasks recorded</td></tr>';
+  html += `</tbody></table></div>`;
+
+  document.getElementById('archivedWeekDetail').innerHTML = html;
+}
+
+function deleteArchive() {
+  verifyManager(() => {
+    const archives = loadArchives();
+    const sel = document.getElementById('archiveWeekSelect');
+    const idx = parseInt(sel.value);
+    if (!confirm('Delete archive for week of ' + archives[idx].weekOf + '?')) return;
+    archives.splice(idx, 1);
+    saveArchives(archives);
+    renderArchivePage();
+    showToast('Archive deleted.');
+  });
+}
+
+// ========== STAFF ANALYTICS ==========
+function buildStaffAnalytics(archives) {
+  // Collect per-staff data across all archived weeks
+  const staffMap = {}; // name -> { weeks, totalHours, deals:{}, types:{}, daysOff:[], workloads:[] }
+
+  archives.forEach(arch => {
+    arch.staff.forEach(s => {
+      if (!s.name) return;
+      if (!staffMap[s.name]) {
+        staffMap[s.name] = { role: s.role, weeks: 0, totalHours: 0, deals: {}, types: {}, daysOffList: [], workloads: [] };
+      }
+      const sm = staffMap[s.name];
+      sm.weeks++;
+      sm.daysOffList.push(s.daysOff || 0);
+      if (s.workload) sm.workloads.push(s.workload);
+
+      s.tasks.forEach(t => {
+        if (!t.deal) return;
+        const hrs = parseInt(t.hours) || 0;
+        sm.totalHours += hrs;
+        sm.deals[t.deal] = (sm.deals[t.deal] || 0) + hrs;
+        if (t.type) sm.types[t.type] = (sm.types[t.type] || 0) + hrs;
+      });
+    });
+  });
+
+  const names = Object.keys(staffMap).sort();
+  if (names.length === 0) return '';
+
+  let html = `<div class="card">
+    <div class="card-header purple">Staff Analytics (across ${archives.length} archived week${archives.length>1?'s':''})</div>
+    <div class="section-note">Click on a staff member to expand their details. Data is aggregated from all archived weeks.</div>
+    <div class="card-body">`;
+
+  names.forEach(name => {
+    const sm = staffMap[name];
+    const avgHours = sm.weeks > 0 ? Math.round(sm.totalHours / sm.weeks) : 0;
+    const avgDaysOff = sm.daysOffList.length > 0 ? (sm.daysOffList.reduce((a,b)=>a+b,0) / sm.daysOffList.length).toFixed(1) : '0';
+
+    // Top 3 deals
+    const topDeals = Object.entries(sm.deals).sort((a,b) => b[1]-a[1]).slice(0,3);
+
+    // Task type breakdown
+    const typeTotal = Object.values(sm.types).reduce((a,b)=>a+b,0);
+    const typeBreakdown = Object.entries(sm.types).sort((a,b)=>b[1]-a[1]);
+
+    // Workload pattern
+    const wCounts = {};
+    sm.workloads.forEach(w => { wCounts[w] = (wCounts[w]||0) + 1; });
+    const atCapacity = (wCounts['At Capacity (>90%)'] || 0);
+    const heavy = (wCounts['Heavy (75-90%)'] || 0);
+    const overloadPct = sm.weeks > 0 ? Math.round(((atCapacity + heavy) / sm.weeks) * 100) : 0;
+
+    html += `
+    <div class="analytics-staff-card">
+      <div class="analytics-staff-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span>${esc(name)} <span class="badge badge-blue">${esc(sm.role||'')}</span></span>
+        <span style="font-size:13px;color:var(--gray-500)">${sm.totalHours}h total | ${sm.weeks} weeks | Click to expand</span>
+      </div>
+      <div class="analytics-staff-body">
+        <div class="analytics-grid">
+          <div class="analytics-metric"><div class="metric-value">${sm.totalHours}</div><div class="metric-label">Total Hours</div></div>
+          <div class="analytics-metric"><div class="metric-value">${avgHours}</div><div class="metric-label">Avg Hours/Week</div></div>
+          <div class="analytics-metric"><div class="metric-value">${sm.weeks}</div><div class="metric-label">Weeks Tracked</div></div>
+          <div class="analytics-metric"><div class="metric-value">${avgDaysOff}</div><div class="metric-label">Avg Days Off/Week</div></div>
+          <div class="analytics-metric"><div class="metric-value" style="color:${overloadPct>60?'var(--red)':overloadPct>30?'var(--accent)':'var(--green)'}">${overloadPct}%</div><div class="metric-label">Weeks Overloaded</div></div>
+        </div>
+
+        <h4 style="margin-bottom:8px">Top Deals</h4>
+        ${topDeals.length ? topDeals.map((d,i) => `<span class="badge badge-purple" style="margin:2px">${i+1}. ${esc(d[0])} (${d[1]}h)</span>`).join('') : '<span style="color:var(--gray-500)">No deals recorded</span>'}
+
+        ${typeBreakdown.length ? `
+        <h4 style="margin:16px 0 8px">Task Type Breakdown</h4>
+        <div class="bar-chart">
+          ${typeBreakdown.map(([type, hrs]) => {
+            const pct = typeTotal > 0 ? Math.round((hrs/typeTotal)*100) : 0;
+            const colors = ['#2c5282','#ed8936','#38a169','#e53e3e','#805ad5','#d69e2e','#319795'];
+            const ci = TASK_TYPES.indexOf(type) % colors.length;
+            return `<div class="bar-row">
+              <div class="bar-label">${esc(type)}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct,8)}%;background:${colors[ci]}">${pct}%</div></div>
+              <div class="bar-value">${hrs}h</div>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+
+        <h4 style="margin:16px 0 8px">Workload History</h4>
+        ${Object.entries(wCounts).map(([w,c]) => {
+          const badge = w.includes('Capacity') || w.includes('Heavy') ? 'badge-red' : w.includes('Moderate') ? 'badge-yellow' : 'badge-green';
+          return `<span class="badge ${badge}" style="margin:2px">${esc(w)}: ${c} week${c>1?'s':''}</span>`;
+        }).join('') || '<span style="color:var(--gray-500)">No workload data</span>'}
+      </div>
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  return html;
+}
+
+// ========== TEAM SUMMARY ==========
+function buildTeamSummary(archives) {
+  // Aggregate hours per staff
+  const staffHours = {};
+  const dealHours = {};
+
+  archives.forEach(arch => {
+    arch.staff.forEach(s => {
+      if (!s.name) return;
+      s.tasks.forEach(t => {
+        if (!t.deal) return;
+        const hrs = parseInt(t.hours) || 0;
+        staffHours[s.name] = (staffHours[s.name] || 0) + hrs;
+        dealHours[t.deal] = (dealHours[t.deal] || 0) + hrs;
+      });
+    });
+  });
+
+  const staffSorted = Object.entries(staffHours).sort((a,b) => b[1]-a[1]);
+  const maxHours = staffSorted.length > 0 ? staffSorted[0][1] : 1;
+  const dealSorted = Object.entries(dealHours).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  const maxDealHours = dealSorted.length > 0 ? dealSorted[0][1] : 1;
+
+  if (staffSorted.length === 0) return '';
+
+  let html = `<div class="card">
+    <div class="card-header purple">Team Summary</div>
+    <div class="card-body">
+      <h4 style="margin-bottom:12px">Total Hours by Staff (All Archived Weeks)</h4>
+      <div class="bar-chart">
+        ${staffSorted.map(([name, hrs]) => {
+          const pct = Math.round((hrs / maxHours) * 100);
+          const color = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--accent)' : 'var(--green)';
+          return `<div class="bar-row">
+            <div class="bar-label">${esc(name)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct,8)}%;background:${color}">${hrs}h</div></div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <h4 style="margin:24px 0 12px">Most Active Deals (Top 10)</h4>
+      <div class="bar-chart">
+        ${dealSorted.map(([deal, hrs]) => {
+          const pct = Math.round((hrs / maxDealHours) * 100);
+          return `<div class="bar-row">
+            <div class="bar-label" style="min-width:140px">${esc(deal)}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct,8)}%;background:#805ad5">${hrs}h</div></div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <h4 style="margin:24px 0 12px">Utilization Insights</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px">
+        ${getUtilizationInsights(archives)}
+      </div>
+    </div>
+  </div>`;
+
+  return html;
+}
+
+function getUtilizationInsights(archives) {
+  const staffData = {};
+  archives.forEach(arch => {
+    arch.staff.forEach(s => {
+      if (!s.name) return;
+      if (!staffData[s.name]) staffData[s.name] = { overloaded: 0, light: 0, total: 0, totalHours: 0 };
+      staffData[s.name].total++;
+      if (s.workload && (s.workload.includes('Capacity') || s.workload.includes('Heavy'))) staffData[s.name].overloaded++;
+      if (s.workload && s.workload.includes('Light')) staffData[s.name].light++;
+      s.tasks.forEach(t => { staffData[s.name].totalHours += parseInt(t.hours) || 0; });
+    });
+  });
+
+  let cards = '';
+
+  // Consistently overloaded
+  const overloaded = Object.entries(staffData)
+    .filter(([,d]) => d.total > 0 && (d.overloaded / d.total) > 0.5)
+    .sort((a,b) => (b[1].overloaded/b[1].total) - (a[1].overloaded/a[1].total));
+
+  if (overloaded.length > 0) {
+    cards += `<div style="padding:16px;background:#fed7d7;border-radius:var(--radius)">
+      <strong style="color:#822727">Consistently Overloaded</strong><br>
+      <span style="font-size:13px;color:#822727">${overloaded.map(([n,d]) => `${esc(n)} (${Math.round((d.overloaded/d.total)*100)}% of weeks)`).join(', ')}</span>
+    </div>`;
+  }
+
+  // Consistently underutilized
+  const underutil = Object.entries(staffData)
+    .filter(([,d]) => d.total > 0 && (d.light / d.total) > 0.5)
+    .sort((a,b) => (b[1].light/b[1].total) - (a[1].light/a[1].total));
+
+  if (underutil.length > 0) {
+    cards += `<div style="padding:16px;background:#c6f6d5;border-radius:var(--radius)">
+      <strong style="color:#22543d">Underutilized (Capacity Available)</strong><br>
+      <span style="font-size:13px;color:#22543d">${underutil.map(([n,d]) => `${esc(n)} (${Math.round((d.light/d.total)*100)}% light weeks)`).join(', ')}</span>
+    </div>`;
+  }
+
+  // Top contributor
+  const topContrib = Object.entries(staffData).sort((a,b) => b[1].totalHours - a[1].totalHours);
+  if (topContrib.length > 0) {
+    cards += `<div style="padding:16px;background:#bee3f8;border-radius:var(--radius)">
+      <strong style="color:#2a4365">Top Contributor</strong><br>
+      <span style="font-size:13px;color:#2a4365">${esc(topContrib[0][0])} with ${topContrib[0][1].totalHours} total hours</span>
+    </div>`;
+  }
+
+  if (!cards) cards = '<div style="color:var(--gray-500)">Not enough data for insights yet. Archive more weeks to see trends.</div>';
+  return cards;
+}
+
 // ========== HELPERS ==========
 function esc(s) {
   if (!s) return '';
@@ -782,15 +1349,14 @@ function showToast(msg) {
 
 // ========== DATE HELPERS ==========
 function toDateStr(d) {
-  return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
+  return d.toISOString().split('T')[0];
 }
 
-// Get the coming Sunday (start of work week)
 function getComingSunday() {
   const today = new Date();
   today.setHours(0,0,0,0);
   const day = today.getDay();
-  let diff = 0 - day;             // 0 = Sunday
+  let diff = 0 - day;
   if (diff < 0) diff += 7;
   if (diff === 0) diff = 0;
   const result = new Date(today);
@@ -798,20 +1364,17 @@ function getComingSunday() {
   return result;
 }
 
-// Derive the submission Thursday from the "Week of" Sunday
 function getThursdayFromSunday(sundayStr) {
   const sun = new Date(sundayStr + 'T00:00:00');
   const thu = new Date(sun);
-  thu.setDate(thu.getDate() - 3);  // Thursday is 3 days before Sunday
+  thu.setDate(thu.getDate() - 3);
   return toDateStr(thu);
 }
 
-// Get the current "Week of" Sunday from the dashboard picker
 function getGlobalWeek() {
   return document.getElementById('globalWeek').value;
 }
 
-// Auto-set dashboard "Week of" to coming Sunday (only on first load)
 function initGlobalWeek() {
   const el = document.getElementById('globalWeek');
   const saved = localStorage.getItem('id_timesheet_weekof');
@@ -821,11 +1384,9 @@ function initGlobalWeek() {
     el.value = toDateStr(getComingSunday());
     localStorage.setItem('id_timesheet_weekof', el.value);
   }
-  // Set all staff submission dates to match
   syncStaffDates();
 }
 
-// When manager changes "Week of", update ALL staff submission dates
 function syncStaffDates() {
   const weekOf = getGlobalWeek();
   if (!weekOf) return;
@@ -834,7 +1395,6 @@ function syncStaffDates() {
   saveState();
 }
 
-// Auto-fill a staff member's weekDate from the dashboard week
 function autoFillSubmissionDate(idx) {
   const weekOf = getGlobalWeek();
   if (weekOf && !state.staff[idx].weekDate) {
@@ -845,23 +1405,44 @@ function autoFillSubmissionDate(idx) {
 
 // ========== GLOBAL WEEK ==========
 document.getElementById('globalWeek').addEventListener('change', function() {
-  localStorage.setItem('id_timesheet_weekof', this.value);
+  const oldWeek = localStorage.getItem('id_timesheet_weekof');
+  const newWeek = this.value;
+
+  // If there was a previous week with data, offer to archive
+  if (oldWeek && oldWeek !== newWeek) {
+    const hasData = state.staff.some(s => s.name && s.tasks.some(t => t.deal));
+    if (hasData) {
+      if (confirm('Archive the current week (' + oldWeek + ') before switching?')) {
+        // Archive without PIN check here since they're already changing the week
+        const archives = loadArchives();
+        const existing = archives.findIndex(a => a.weekOf === oldWeek);
+        if (existing >= 0) archives.splice(existing, 1);
+        archives.push({
+          weekOf: oldWeek,
+          archivedAt: new Date().toISOString(),
+          staff: JSON.parse(JSON.stringify(state.staff))
+        });
+        archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf));
+        saveArchives(archives);
+        showToast('Week of ' + oldWeek + ' archived!');
+      }
+    }
+  }
+
+  localStorage.setItem('id_timesheet_weekof', newWeek);
   syncStaffDates();
-  // Rebuild current staff page if open
   buildStaffPages();
   const activePage = document.querySelector('.nav-btn.active');
   if (activePage) switchPage(activePage.dataset.page);
-  showToast('Week updated — all submission dates synced to ' + getThursdayFromSunday(this.value));
 });
 
 // ========== INIT ==========
-// Pre-load sample data from the Excel file for first use
 function loadSampleData() {
-  const DATA_VERSION = 3; // bump this to force a data refresh
+  const DATA_VERSION = 4;
   const savedVersion = localStorage.getItem('id_timesheet_version');
-  if (savedVersion == DATA_VERSION) return; // Already have current data
+  if (savedVersion == DATA_VERSION) return;
   localStorage.removeItem('id_timesheet_data');
-  state = loadState(); // reload fresh defaults
+  state = loadState();
   localStorage.setItem('id_timesheet_version', DATA_VERSION);
 
   const samples = [
