@@ -563,8 +563,7 @@
       <div class="card-body">
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showChangePIN()">Change Manager PIN</button>
-          <button class="btn btn-outline btn-sm" onclick="resetPIN()">Forgot PIN</button>
-          <button class="btn btn-purple btn-sm" onclick="archiveCurrentWeek()">Archive This Week</button>
+<button class="btn btn-purple btn-sm" onclick="archiveCurrentWeek()">Archive This Week</button>
           <button class="btn btn-outline btn-sm" id="undoRemoveBtn" onclick="undoRemoveStaff()" style="display:none;color:var(--accent)">Undo Remove Staff</button>
           <span style="font-size:12px;color:var(--gray-500)">PIN is required to remove staff or access manager settings.</span>
         </div>
@@ -678,18 +677,6 @@ function checkPIN() {
     return false;
   }
   return true;
-}
-
-function resetPIN() {
-  const answer = prompt('Security question: What is the department name?\n(Hint: shown in the page title)');
-  if (!answer) return;
-  if (answer.trim().toLowerCase() === 'investment development') {
-    setManagerPIN(DEFAULT_PIN);
-    alert('PIN has been reset to the default. Please change it immediately.');
-    showChangePIN();
-  } else {
-    alert('Incorrect answer. Contact your IT administrator for help.');
-  }
 }
 
 function showChangePIN() {
@@ -1058,22 +1045,6 @@ function editStaffInfo(idx) {
 function markSubmitted(idx) {
   const s = state.staff[idx];
   const issues = [];
-
-  // Full leave — allow submit with just bandwidth (no tasks needed)
-  if (s.daysOff === 5) {
-    if (!s.bandwidth) issues.push('Bandwidth not selected');
-    if (issues.length > 0) {
-      alert('Please fix before submitting:\n\n• ' + issues.join('\n• '));
-      return;
-    }
-    s.submitted = true;
-    s.submittedAt = new Date().toISOString();
-    s.revision = false;
-    saveState();
-    rebuildStaffPage(idx);
-    showToast(s.name + ' — marked as on leave.');
-    return;
-  }
 
   // Check availability fields
   if (!s.workload) issues.push('Workload Level not selected');
@@ -1542,7 +1513,7 @@ function renderInstructionsPage() {
             <h4 style="color:#805ad5">Managers (PIN required)</h4>
             <ul>
               <li>Everything staff can do, plus:</li>
-              <li>Add or remove staff members</li>
+              <li>Add or remove staff members (with undo option)</li>
               <li>Remove projects from the list</li>
               <li>Request revision on submitted plans</li>
               <li>Archive weeks for long-term records</li>
@@ -1568,11 +1539,15 @@ function renderInstructionsPage() {
           </div>
           <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
             <strong>Archive</strong>
-            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">Save each week's data before moving to the next. View past weeks, staff analytics, and team trends over time.</p>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">Each week's data is automatically archived when the week advances. Managers can also archive manually. View past weeks, staff analytics, and team trends over time.</p>
           </div>
           <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
-            <strong>Auto Dates</strong>
-            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">The manager sets the "Week of" date once. All staff submission dates auto-calculate — no confusion about dates.</p>
+            <strong>Auto Dates & Week Advance</strong>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">The "Week of" date auto-advances when a new week begins. Submission dates sync automatically across all staff.</p>
+          </div>
+          <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
+            <strong>Submission & Locking</strong>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">Once submitted, your plan is locked to prevent accidental changes. Your total planned hours are shown and flagged if they exceed your available capacity.</p>
           </div>
         </div>
 
@@ -1580,11 +1555,11 @@ function renderInstructionsPage() {
 
         <h3 style="margin-bottom:12px;color:var(--primary)">Important Notes</h3>
         <ul style="padding-left:20px;font-size:14px;color:var(--gray-700);line-height:2">
-
           <li><strong>Work week:</strong> Sunday to Thursday.</li>
           <li><strong>Submission deadline:</strong> Thursday end of day.</li>
           <li><strong>Manager PIN:</strong> Required for admin actions. Contact your manager if needed.</li>
-          <li><strong>Archive before switching weeks</strong> to keep a record. The system will remind you when you change the "Week of" date.</li>
+          <li><strong>Auto-archive:</strong> Previous weeks are automatically archived when the week advances. Managers can also archive manually from the Dashboard.</li>
+          <li><strong>After submitting:</strong> Your plan is locked. If changes are needed, ask your manager to request a revision.</li>
         </ul>
 
       </div>
@@ -1919,19 +1894,13 @@ function initGlobalWeek() {
         saveArchives(archives);
       }
 
-      // Reset statuses but KEEP tasks (they may span multiple weeks — staff can clear them)
+      // Reset submission statuses only — keep all data so staff can continue working
       state.staff.forEach(s => {
         s.submitted = false;
         s.submittedAt = '';
         s.revision = false;
         s.revisionNote = '';
         s.lastEdited = '';
-        s.daysOff = 0;
-        s.workload = '';
-        s.bandwidth = '';
-        s.comments = '';
-        // Keep task deal names (multi-week projects) but clear hours/dates for fresh entry
-        s.tasks = s.tasks.map(t => ({deal: t.deal, type: t.type, start:'', end:'', priority: t.priority, hours:'', notes:''}));
       });
       saveState();
 
