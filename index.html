@@ -1894,13 +1894,26 @@ function initGlobalWeek() {
         saveArchives(archives);
       }
 
-      // Reset submission statuses only — keep all data so staff can continue working
+      // Reset for new week: keep task names/types (likely same projects), clear everything else
       state.staff.forEach(s => {
         s.submitted = false;
         s.submittedAt = '';
         s.revision = false;
         s.revisionNote = '';
         s.lastEdited = '';
+        s.daysOff = 0;
+        s.workload = '';
+        s.bandwidth = '';
+        s.comments = '';
+        s.tasks = s.tasks.map(t => ({
+          deal: t.deal,       // keep — likely same project
+          type: t.type,       // keep — likely same work type
+          start: '',          // clear — new week, new dates
+          end: '',
+          priority: '',       // clear — may change week to week
+          hours: '',          // clear — fresh estimate needed
+          notes: ''           // clear — new week context
+        }));
       });
       saveState();
 
@@ -1967,14 +1980,23 @@ document.getElementById('globalWeek').addEventListener('change', function() {
       });
       archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf));
       saveArchives(archives);
-      // Reset all weekly statuses for the new week
+      // Reset for new week: keep task names/types, clear everything else
       state.staff.forEach(s => {
         s.submitted = false;
         s.submittedAt = '';
         s.revision = false;
         s.revisionNote = '';
         s.lastEdited = '';
+        s.daysOff = 0;
+        s.workload = '';
+        s.bandwidth = '';
+        s.comments = '';
+        s.tasks = s.tasks.map(t => ({
+          deal: t.deal, type: t.type,
+          start: '', end: '', priority: '', hours: '', notes: ''
+        }));
       });
+      saveState();
       showToast('Week of ' + oldWeek + ' auto-archived. New week ready.');
     }
   }
