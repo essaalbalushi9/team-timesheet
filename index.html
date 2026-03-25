@@ -473,7 +473,8 @@
 
   @media (max-width: 768px) {
     .topbar h1 { font-size: 16px; }
-    .topbar { flex-direction: column; gap: 8px; }
+    .topbar { flex-direction: column; gap: 8px; position: relative; }
+    .nav-bar { top: auto; position: sticky; top: 0; z-index: 99; }
     .main { padding: 0 8px; margin: 8px auto; }
     .nav-btn { padding: 10px 12px; font-size: 13px; }
     .bar-label { min-width: 70px; font-size: 12px; }
@@ -517,7 +518,7 @@
           <thead>
             <tr>
               <th>Status</th><th>Name</th><th>Role</th><th>Manager</th><th>Days Off</th>
-              <th>Available</th><th>Capacity</th><th>Workload</th><th>Bandwidth</th><th>Last Edited</th><th>Action</th>
+              <th>Available</th><th>Capacity</th><th>Workload</th><th>Bandwidth</th><th>Comments</th><th>Last Edited</th><th>Action</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -818,6 +819,7 @@ function buildStaffHTML(s, idx) {
   autoFillSubmissionDate(idx);
   const availDays = 5 - (s.daysOff || 0);
   const capacityPct = Math.round((availDays / 5) * 100);
+  const locked = s.submitted; // lock form after submission
 
   return `
     <div class="card">
@@ -844,7 +846,7 @@ function buildStaffHTML(s, idx) {
         <div class="avail-grid">
           <div class="avail-stat">
             <label>Days Leave / Travel</label>
-            <select onchange="updateStaff(${idx},'daysOff',+this.value);rebuildStaffPage(${idx})" class="input-highlight" style="max-width:100px;margin:8px auto;text-align:center">
+            <select onchange="updateStaff(${idx},'daysOff',+this.value);rebuildStaffPage(${idx})" class="input-highlight" style="max-width:100px;margin:8px auto;text-align:center" ${locked?'disabled':''}>
               ${[0,1,2,3,4,5].map(n=>`<option ${s.daysOff==n?'selected':''}>${n}</option>`).join('')}
             </select>
           </div>
@@ -858,21 +860,21 @@ function buildStaffHTML(s, idx) {
           </div>
           <div>
             <label>Workload Level</label>
-            <select onchange="updateStaff(${idx},'workload',this.value)" class="input-highlight">
+            <select onchange="updateStaff(${idx},'workload',this.value)" class="input-highlight" ${locked?'disabled':''}>
               <option value="">Select...</option>
               ${WORKLOAD_LEVELS.map(w=>`<option ${s.workload===w?'selected':''}>${w}</option>`).join('')}
             </select>
           </div>
           <div>
             <label>Bandwidth for New Work</label>
-            <select onchange="updateStaff(${idx},'bandwidth',this.value)" class="input-highlight">
+            <select onchange="updateStaff(${idx},'bandwidth',this.value)" class="input-highlight" ${locked?'disabled':''}>
               <option value="">Select...</option>
               ${BANDWIDTH_OPTIONS.map(b=>`<option ${s.bandwidth===b?'selected':''}>${b}</option>`).join('')}
             </select>
           </div>
           <div>
             <label>Comments / Flags</label>
-            <textarea onchange="updateStaff(${idx},'comments',this.value)" class="input-highlight">${esc(s.comments||'')}</textarea>
+            <textarea onchange="updateStaff(${idx},'comments',this.value)" class="input-highlight" ${locked?'disabled':''}>${esc(s.comments||'')}</textarea>
           </div>
         </div>
       </div>
@@ -880,7 +882,7 @@ function buildStaffHTML(s, idx) {
 
     <div class="card">
       <div class="card-header">B -- Next Week Plan (Sunday - Thursday)</div>
-      <div class="section-note">List up to 4 tasks. Select deal names, type, and priority from dropdowns. Enter hours as whole numbers.</div>
+      <div class="section-note">${locked ? '<strong style="color:var(--green)">✓ This plan has been submitted and is locked.</strong> Contact your manager to request changes.' : 'List up to 4 tasks. Select deal names, type, and priority from dropdowns. Enter hours as whole numbers.'}</div>
       <div class="table-wrap">
         <table class="task-table">
           <thead>
@@ -893,22 +895,22 @@ function buildStaffHTML(s, idx) {
           <tbody>
             ${s.tasks.map((t,ti) => `<tr>
               <td class="row-num">${ti+1}</td>
-              <td><select onchange="updateTask(${idx},${ti},'deal',this.value)" class="input-highlight">
+              <td><select onchange="updateTask(${idx},${ti},'deal',this.value)" class="input-highlight" ${locked?'disabled':''}>
                 <option value="">Select deal...</option>
                 ${state.deals.map(d=>`<option ${t.deal===d?'selected':''}>${d}</option>`).join('')}
               </select></td>
-              <td><select onchange="updateTask(${idx},${ti},'type',this.value)" class="input-highlight">
+              <td><select onchange="updateTask(${idx},${ti},'type',this.value)" class="input-highlight" ${locked?'disabled':''}>
                 <option value="">Select...</option>
                 ${TASK_TYPES.map(tp=>`<option ${t.type===tp?'selected':''}>${tp}</option>`).join('')}
               </select></td>
-              <td><input type="date" value="${t.start||''}" onchange="updateTask(${idx},${ti},'start',this.value)" class="input-highlight"></td>
-              <td><input type="date" value="${t.end||''}" onchange="updateTask(${idx},${ti},'end',this.value)" class="input-highlight"></td>
-              <td><select onchange="updateTask(${idx},${ti},'priority',this.value)" class="input-highlight">
+              <td><input type="date" value="${t.start||''}" onchange="updateTask(${idx},${ti},'start',this.value)" class="input-highlight" ${locked?'disabled':''}></td>
+              <td><input type="date" value="${t.end||''}" onchange="updateTask(${idx},${ti},'end',this.value)" class="input-highlight" ${locked?'disabled':''}></td>
+              <td><select onchange="updateTask(${idx},${ti},'priority',this.value)" class="input-highlight" ${locked?'disabled':''}>
                 <option value="">Select...</option>
                 ${PRIORITIES.map(p=>`<option ${t.priority===p?'selected':''}>${p}</option>`).join('')}
               </select></td>
-              <td><input type="number" min="0" max="40" value="${t.hours||''}" onchange="updateTask(${idx},${ti},'hours',this.value)" class="input-highlight" style="width:70px"></td>
-              <td><input value="${esc(t.notes||'')}" onchange="updateTask(${idx},${ti},'notes',this.value)" class="input-highlight"></td>
+              <td><input type="number" min="0" max="40" value="${t.hours||''}" onchange="updateTask(${idx},${ti},'hours',this.value)" class="input-highlight" style="width:70px" ${locked?'disabled':''}></td>
+              <td><input value="${esc(t.notes||'')}" onchange="updateTask(${idx},${ti},'notes',this.value)" class="input-highlight" ${locked?'disabled':''}></td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -997,7 +999,7 @@ function addStaff() {
   const manager = prompt('Manager name:') || '';
   state.staff.push({
     name: name.trim(), role: role.trim(), manager: manager.trim(), weekDate: '', daysOff: 0,
-    workload: '', bandwidth: '', comments: '', submitted: false,
+    workload: '', bandwidth: '', comments: '', submitted: false, submittedAt: '', revision: false, revisionNote: '', lastEdited: '',
     tasks: [{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
             {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
             {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
@@ -1153,6 +1155,7 @@ function renderDashboard() {
       <td>${cap}%</td>
       <td>${s.workload ? `<span class="badge badge-blue">${esc(s.workload)}</span>` : '-'}</td>
       <td>${s.bandwidth ? `<span class="badge ${bwBadge}">${esc(s.bandwidth)}</span>` : '-'}</td>
+      <td style="font-size:12px">${esc(s.comments||'')}</td>
       <td style="font-size:12px">${lastEdit}</td>
       <td>${s.submitted ? `<button class="btn btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="requestRevision(${realIdx})">Request Revision</button>` : ''}</td>
     </tr>`;
@@ -1439,8 +1442,8 @@ function renderInstructionsPage() {
         <div class="instructions-step">
           <div class="step-num">5</div>
           <div class="step-content">
-            <h4>Click Save</h4>
-            <p>Hit the blue "Save" button at the bottom of your page. Your data is saved to your browser automatically, but clicking Save confirms it.</p>
+            <h4>Save Draft or Submit</h4>
+            <p>"Save Draft" saves your work in progress. When you're done, click "Submit Plan" — it checks all required fields (hours, type, priority, dates) and marks you as submitted on the Dashboard.</p>
           </div>
         </div>
 
@@ -1461,9 +1464,10 @@ function renderInstructionsPage() {
             <h4 style="color:var(--primary)">Staff Members</h4>
             <ul>
               <li>Fill in your own weekly plan</li>
+              <li>Click "Submit Plan" when done — it validates all fields first</li>
               <li>View the Dashboard (read-only summary)</li>
-              <li>View the Projects list</li>
-              <li>Cannot remove staff or view archives</li>
+              <li>View and add to the Projects list</li>
+              <li>If a manager requests revision, a red banner appears on your page</li>
             </ul>
           </div>
           <div class="role-card">
@@ -1471,7 +1475,8 @@ function renderInstructionsPage() {
             <ul>
               <li>Everything staff can do, plus:</li>
               <li>Add or remove staff members</li>
-              <li>Add or remove projects</li>
+              <li>Remove projects from the list</li>
+              <li>Request revision on submitted plans</li>
               <li>Archive weeks for long-term records</li>
               <li>View archives & staff analytics</li>
               <li>Change the manager PIN</li>
@@ -1773,8 +1778,16 @@ function formatDate(d) {
 }
 
 function saveAndNotify() {
+  // Find the currently active staff page and update lastEdited
+  const activePage = document.querySelector('.nav-btn.active');
+  if (activePage && activePage.dataset.page && activePage.dataset.page.startsWith('staff-')) {
+    const idx = parseInt(activePage.dataset.page.split('-')[1]);
+    if (!isNaN(idx) && state.staff[idx]) {
+      state.staff[idx].lastEdited = new Date().toISOString();
+    }
+  }
   saveState();
-  showToast('Saved successfully!');
+  showToast('Draft saved!');
 }
 
 function showToast(msg) {
@@ -1870,8 +1883,14 @@ document.getElementById('globalWeek').addEventListener('change', function() {
       });
       archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf));
       saveArchives(archives);
-      // Reset submitted status for the new week
-      state.staff.forEach(s => { s.submitted = false; });
+      // Reset all weekly statuses for the new week
+      state.staff.forEach(s => {
+        s.submitted = false;
+        s.submittedAt = '';
+        s.revision = false;
+        s.revisionNote = '';
+        s.lastEdited = '';
+      });
       showToast('Week of ' + oldWeek + ' auto-archived. New week ready.');
     }
   }
