@@ -517,7 +517,7 @@
           <thead>
             <tr>
               <th>Status</th><th>Name</th><th>Role</th><th>Manager</th><th>Days Off</th>
-              <th>Available</th><th>Capacity</th><th>Workload</th><th>Bandwidth</th><th>Comments</th>
+              <th>Available</th><th>Capacity</th><th>Workload</th><th>Bandwidth</th><th>Last Edited</th><th>Action</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -822,7 +822,12 @@ function buildStaffHTML(s, idx) {
   return `
     <div class="card">
       <div class="card-header">Weekly Planning Report</div>
-      <div class="section-note">${s.name || 'New Staff'} | ${s.role || 'Role'} | ${s.manager || 'Manager'} | Due: Thursday EOD | Covers: coming Sunday-Thursday</div>
+      <div class="section-note">
+        ${s.name || 'New Staff'} | ${s.role || 'Role'} | ${s.manager || 'Manager'} | Due: Thursday EOD | Covers: coming Sunday-Thursday
+        ${s.submitted ? '<br><span class="badge badge-green" style="margin-top:4px">✓ Submitted' + (s.submittedAt ? ' on ' + new Date(s.submittedAt).toLocaleDateString() : '') + '</span>' : ''}
+        ${s.revision ? '<br><span class="badge badge-red" style="margin-top:4px">⚠ Revision requested by manager' + (s.revisionNote ? ': ' + esc(s.revisionNote) : '') + ' — please update and re-submit</span>' : ''}
+        ${s.lastEdited ? '<br><span style="font-size:11px;color:var(--gray-500)">Last edited: ' + new Date(s.lastEdited).toLocaleString() + '</span>' : ''}
+      </div>
       <div class="card-body">
         <div class="staff-identity">
           <div><label>Name</label><input value="${esc(s.name)}" readonly style="background:#edf2f7;cursor:not-allowed" title="Contact manager to change"></div>
@@ -912,7 +917,7 @@ function buildStaffHTML(s, idx) {
         <button class="btn btn-outline btn-sm" onclick="editStaffInfo(${idx})">Edit Staff Info (Manager)</button>
         <button class="btn btn-danger btn-sm" onclick="removeStaff(${idx})">Remove Staff</button>
         <span style="flex:1"></span>
-        <button class="btn btn-accent" onclick="markSubmitted(${idx})">${s.submitted ? '✓ Submitted' : 'Submit Plan'}</button>
+        <button class="btn ${s.submitted ? 'btn-outline' : s.revision ? 'btn-danger' : 'btn-accent'}" onclick="markSubmitted(${idx})">${s.submitted ? '✓ Submitted' : s.revision ? '⚠ Re-submit Plan' : 'Submit Plan'}</button>
         <button class="btn btn-primary" onclick="saveAndNotify()">Save Draft</button>
       </div>
     </div>
@@ -922,9 +927,11 @@ function buildStaffHTML(s, idx) {
 // ========== UPDATES ==========
 function updateStaff(idx, field, value) {
   state.staff[idx][field] = value;
+  state.staff[idx].lastEdited = new Date().toISOString();
   // Clear submitted status when plan changes
   if (['daysOff','workload','bandwidth','comments'].includes(field)) {
     state.staff[idx].submitted = false;
+    state.staff[idx].revision = false;
   }
   saveState();
   if (field === 'name') {
@@ -959,9 +966,20 @@ function updateTask(staffIdx, taskIdx, field, value) {
   }
 
   task[field] = value;
+  state.staff[staffIdx].lastEdited = new Date().toISOString();
   // Clear submitted status when plan changes
   state.staff[staffIdx].submitted = false;
+  state.staff[staffIdx].revision = false;
   saveState();
+
+  // Warn if same deal selected twice
+  if (field === 'deal' && value) {
+    const deals = state.staff[staffIdx].tasks.map(t => t.deal).filter(d => d);
+    const dupes = deals.filter((d, i) => deals.indexOf(d) !== i);
+    if (dupes.length > 0) {
+      alert('Note: "' + value + '" is selected in more than one task row. Is that intentional?');
+    }
+  }
 }
 
 function rebuildStaffPage(idx) {
@@ -1013,18 +1031,35 @@ function editStaffInfo(idx) {
 
 function markSubmitted(idx) {
   const s = state.staff[idx];
-  // Validate: at least one task with a deal selected
-  const hasTasks = s.tasks.some(t => t.deal);
-  if (!hasTasks) {
-    alert('Please add at least one task before submitting.');
+  const issues = [];
+
+  // Check availability fields
+  if (!s.workload) issues.push('Workload Level not selected');
+  if (!s.bandwidth) issues.push('Bandwidth not selected');
+
+  // Check at least one task
+  const activeTasks = s.tasks.filter(t => t.deal);
+  if (activeTasks.length === 0) {
+    issues.push('No tasks added — select at least one deal');
+  }
+
+  // Check tasks with deals have hours, type, priority, and dates
+  activeTasks.forEach((t, i) => {
+    if (!t.hours) issues.push('Task "' + t.deal + '" is missing hours');
+    if (!t.type) issues.push('Task "' + t.deal + '" is missing type');
+    if (!t.priority) issues.push('Task "' + t.deal + '" is missing priority');
+    if (!t.start) issues.push('Task "' + t.deal + '" is missing start date');
+    if (!t.end) issues.push('Task "' + t.deal + '" is missing end date');
+  });
+
+  if (issues.length > 0) {
+    alert('Please fix before submitting:\n\n• ' + issues.join('\n• '));
     return;
   }
-  // Validate: workload and bandwidth filled
-  if (!s.workload || !s.bandwidth) {
-    alert('Please fill in Workload Level and Bandwidth before submitting.');
-    return;
-  }
+
   s.submitted = true;
+  s.submittedAt = new Date().toISOString();
+  s.revision = false;
   saveState();
   rebuildStaffPage(idx);
   showToast(s.name + ' — plan submitted!');
@@ -1046,29 +1081,70 @@ function removeStaff(idx) {
 function renderDashboard() {
   const active = state.staff.filter(s => s.name);
   const submitted = active.filter(s => s.submitted);
+  const pending = active.filter(s => !s.submitted);
+  const revisions = active.filter(s => s.revision);
   const available = active.filter(s => s.bandwidth && s.bandwidth.includes('Available'));
-  const light = active.filter(s => s.workload && s.workload.includes('Light'));
   const archCount = loadArchives().length;
+
+  // Deadline warning: if today is Friday or later and people haven't submitted
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 5=Fri, 6=Sat, 0=Sun
+  const pastDeadline = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
+  const lateNames = pending.map(s => s.name);
 
   document.getElementById('dashStats').innerHTML = `
     <div class="stat-card stat-blue"><div class="number">${active.length}</div><div class="label">Active Staff</div></div>
     <div class="stat-card stat-green"><div class="number">${submitted.length}</div><div class="label">Submitted</div></div>
+    <div class="stat-card ${pending.length > 0 ? 'stat-red' : 'stat-green'}"><div class="number">${pending.length}</div><div class="label">Pending</div></div>
     <div class="stat-card stat-green"><div class="number">${available.length}</div><div class="label">Available</div></div>
-    <div class="stat-card stat-yellow"><div class="number">${light.length}</div><div class="label">Light Workload</div></div>
     <div class="stat-card stat-purple"><div class="number">${archCount}</div><div class="label">Weeks Archived</div></div>
   `;
 
+  // Late submission warning banner
+  if (pastDeadline && lateNames.length > 0) {
+    document.getElementById('dashStats').innerHTML += `
+      <div style="grid-column:1/-1;background:#fed7d7;border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px">⚠</span>
+        <div>
+          <strong style="color:#822727">Past Thursday deadline — ${lateNames.length} staff haven't submitted:</strong>
+          <div style="color:#822727;font-size:13px;margin-top:4px">${lateNames.join(', ')}</div>
+        </div>
+      </div>`;
+  }
+
   // Availability table
   const tbody1 = document.querySelector('#dashAvailTable tbody');
-  tbody1.innerHTML = active.map(s => {
+  tbody1.innerHTML = active.map((s, si) => {
     const avail = 5 - (s.daysOff || 0);
     const cap = Math.round((avail/5)*100);
     const bwBadge = s.bandwidth
       ? s.bandwidth.includes('Available') ? 'badge-green'
         : s.bandwidth.includes('Limited') ? 'badge-yellow' : 'badge-red'
       : 'badge-gray';
+
+    // Status badge
+    let statusBadge;
+    if (s.revision) statusBadge = '<span class="badge badge-yellow">Revision</span>';
+    else if (s.submitted) statusBadge = '<span class="badge badge-green">Submitted</span>';
+    else statusBadge = '<span class="badge badge-red">Pending</span>';
+
+    // Incomplete warnings
+    const activeTasks = s.tasks.filter(t => t.deal);
+    const missingHours = activeTasks.filter(t => !t.hours).length;
+    let warnings = [];
+    if (!s.workload) warnings.push('No workload');
+    if (!s.bandwidth) warnings.push('No bandwidth');
+    if (activeTasks.length === 0) warnings.push('No tasks');
+    if (missingHours > 0) warnings.push(missingHours + ' task(s) missing hours');
+
+    // Last edited
+    const lastEdit = s.lastEdited ? timeAgo(s.lastEdited) : 'Never';
+
+    // Find real index in state.staff
+    const realIdx = state.staff.indexOf(s);
+
     return `<tr>
-      <td>${s.submitted ? '<span class="badge badge-green">Submitted</span>' : '<span class="badge badge-red">Pending</span>'}</td>
+      <td>${statusBadge}${warnings.length ? '<br><span style="font-size:11px;color:var(--red)">' + warnings.join(', ') + '</span>' : ''}</td>
       <td><strong>${esc(s.name)}</strong></td>
       <td>${esc(s.role)}</td>
       <td>${esc(s.manager)}</td>
@@ -1077,7 +1153,8 @@ function renderDashboard() {
       <td>${cap}%</td>
       <td>${s.workload ? `<span class="badge badge-blue">${esc(s.workload)}</span>` : '-'}</td>
       <td>${s.bandwidth ? `<span class="badge ${bwBadge}">${esc(s.bandwidth)}</span>` : '-'}</td>
-      <td>${esc(s.comments||'')}</td>
+      <td style="font-size:12px">${lastEdit}</td>
+      <td>${s.submitted ? `<button class="btn btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="requestRevision(${realIdx})">Request Revision</button>` : ''}</td>
     </tr>`;
   }).join('');
 
@@ -1653,7 +1730,36 @@ function getUtilizationInsights(archives) {
   return cards;
 }
 
+// ========== REVISION ==========
+function requestRevision(idx) {
+  if (!checkPIN()) return;
+  const s = state.staff[idx];
+  const reason = prompt('Reason for revision request for ' + s.name + ':');
+  if (!reason) return;
+  s.submitted = false;
+  s.revision = true;
+  s.revisionNote = reason;
+  saveState();
+  buildStaffPages();
+  renderDashboard();
+  showToast('Revision requested from ' + s.name);
+}
+
 // ========== HELPERS ==========
+function timeAgo(isoStr) {
+  const now = new Date();
+  const then = new Date(isoStr);
+  const mins = Math.floor((now - then) / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return days + 'd ago';
+  return then.toLocaleDateString();
+}
+
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -1741,6 +1847,17 @@ document.getElementById('globalWeek').addEventListener('change', function() {
 
   // Auto-archive previous week if it has data (prevents accidental loss)
   if (oldWeek && oldWeek !== newWeek) {
+    // Warn if staff haven't submitted
+    const notSubmitted = state.staff.filter(s => s.name && !s.submitted);
+    if (notSubmitted.length > 0) {
+      if (!confirm(notSubmitted.length + ' staff haven\'t submitted yet:\n\n' +
+        notSubmitted.map(s => '• ' + s.name).join('\n') +
+        '\n\nSwitch week anyway? (Their current data will be archived as-is)')) {
+        // Revert the date picker
+        document.getElementById('globalWeek').value = oldWeek;
+        return;
+      }
+    }
     const hasData = state.staff.some(s => s.name && s.tasks.some(t => t.deal));
     if (hasData) {
       const archives = loadArchives();
@@ -1768,7 +1885,7 @@ document.getElementById('globalWeek').addEventListener('change', function() {
 
 // ========== INIT ==========
 function loadSampleData() {
-  const DATA_VERSION = 6; // bump to reset entries
+  const DATA_VERSION = 7; // bump to reset entries
   const savedVersion = localStorage.getItem('id_timesheet_version');
   if (savedVersion == DATA_VERSION) return;
   localStorage.removeItem('id_timesheet_data');
