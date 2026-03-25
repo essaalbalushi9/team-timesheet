@@ -502,7 +502,7 @@
   </div>
   <div class="week-picker">
     <label style="color:white;margin:0;text-transform:none;font-size:13px">Week of:</label>
-    <input type="date" id="globalWeek" style="max-width:170px">
+    <input type="date" id="globalWeek" style="max-width:170px" readonly>
   </div>
 </div>
 
@@ -1741,7 +1741,6 @@ function renderInstructionsPage() {
               <li>Request revision on submitted plans</li>
               <li>View archives, staff analytics, and edit past weeks</li>
               <li>Change the manager PIN</li>
-              <li>Override the "Week of" date</li>
             </ul>
           </div>
         </div>
@@ -2173,68 +2172,7 @@ function autoFillSubmissionDate(idx) {
 }
 
 // ========== GLOBAL WEEK ==========
-document.getElementById('globalWeek').addEventListener('change', function() {
-  const oldWeek = localStorage.getItem('id_timesheet_weekof');
-  const newWeek = this.value;
-
-  // Manager-only: require PIN to change week manually
-  if (!checkPIN()) {
-    this.value = oldWeek; // revert
-    return;
-  }
-
-  // Auto-archive previous week if it has data (prevents accidental loss)
-  if (oldWeek && oldWeek !== newWeek) {
-    // Warn if staff haven't submitted
-    const notSubmitted = state.staff.filter(s => s.name && !s.submitted);
-    if (notSubmitted.length > 0) {
-      if (!confirm(notSubmitted.length + ' staff haven\'t submitted yet:\n\n' +
-        notSubmitted.map(s => '• ' + s.name).join('\n') +
-        '\n\nSwitch week anyway? (Their current data will be archived as-is)')) {
-        // Revert the date picker
-        document.getElementById('globalWeek').value = oldWeek;
-        return;
-      }
-    }
-    const hasData = state.staff.some(s => s.name && s.tasks.some(t => t.deal));
-    if (hasData) {
-      const archives = loadArchives();
-      const existing = archives.findIndex(a => a.weekOf === oldWeek);
-      if (existing >= 0) archives.splice(existing, 1);
-      archives.push({
-        weekOf: oldWeek,
-        archivedAt: new Date().toISOString(),
-        staff: JSON.parse(JSON.stringify(state.staff))
-      });
-      archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf));
-      saveArchives(archives);
-      // Reset for new week: keep task names/types, clear everything else
-      state.staff.forEach(s => {
-        s.submitted = false;
-        s.submittedAt = '';
-        s.revision = false;
-        s.revisionNote = '';
-        s.lastEdited = '';
-        s.daysOff = 0;
-        s.workload = '';
-        s.bandwidth = '';
-        s.comments = '';
-        s.tasks = s.tasks.map(t => ({
-          deal: t.deal, type: t.type,
-          start: '', end: '', priority: '', hours: '', notes: ''
-        }));
-      });
-      saveState();
-      showToast('Week of ' + oldWeek + ' auto-archived. New week ready.');
-    }
-  }
-
-  localStorage.setItem('id_timesheet_weekof', newWeek);
-  syncStaffDates();
-  buildStaffPages();
-  const activePage = document.querySelector('.nav-btn.active');
-  if (activePage) switchPage(activePage.dataset.page);
-});
+// Week of is fully automatic — no manual override
 
 // ========== INIT ==========
 function loadSampleData() {
