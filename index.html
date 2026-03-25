@@ -76,6 +76,10 @@
   .nav-btn.dashboard-btn.active { border-bottom-color: var(--accent); }
   .nav-btn.archive-btn { color: #805ad5; font-weight: 600; }
   .nav-btn.archive-btn.active { border-bottom-color: #805ad5; }
+  .nav-btn.projects-btn { color: #319795; font-weight: 600; }
+  .nav-btn.projects-btn.active { border-bottom-color: #319795; }
+  .nav-btn.instructions-btn { color: var(--gray-500); font-weight: 600; }
+  .nav-btn.instructions-btn.active { border-bottom-color: var(--gray-500); }
 
   /* Main content */
   .main { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
@@ -416,6 +420,57 @@
     flex-wrap: wrap;
   }
 
+  /* Project list */
+  .project-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .project-item:last-child { border-bottom: none; }
+  .project-item .project-name { font-size: 14px; }
+  .project-item .project-num { color: var(--gray-500); font-size: 12px; min-width: 30px; }
+  .project-add-row {
+    display: flex;
+    gap: 10px;
+    padding: 16px;
+    border-top: 2px solid var(--gray-200);
+  }
+  .project-add-row input { flex: 1; }
+
+  /* Instructions */
+  .instructions-step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+  }
+  .step-num {
+    min-width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .step-content h4 { margin-bottom: 4px; }
+  .step-content p { color: var(--gray-500); font-size: 14px; line-height: 1.5; }
+  .role-card {
+    padding: 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+  }
+  .role-card h4 { margin-bottom: 8px; }
+  .role-card ul { padding-left: 20px; font-size: 14px; color: var(--gray-700); line-height: 1.8; }
+
+  .card-header.teal { background: #319795; }
+
   @media (max-width: 768px) {
     .topbar h1 { font-size: 16px; }
     .main { padding: 0 12px; margin: 12px auto; }
@@ -504,6 +559,16 @@
   <!-- Archive Page -->
   <div class="page" id="page-archive">
     <div id="archiveContent"></div>
+  </div>
+
+  <!-- Projects Page -->
+  <div class="page" id="page-projects">
+    <div id="projectsContent"></div>
+  </div>
+
+  <!-- Instructions Page -->
+  <div class="page" id="page-instructions">
+    <div id="instructionsContent"></div>
   </div>
 
   <!-- Staff pages get injected here -->
@@ -655,12 +720,26 @@ function buildNav() {
   const nav = document.getElementById('navBar');
   nav.innerHTML = '<button class="nav-btn dashboard-btn" data-page="dashboard">Dashboard</button>';
 
+  // Projects button
+  const projBtn = document.createElement('button');
+  projBtn.className = 'nav-btn projects-btn';
+  projBtn.dataset.page = 'projects';
+  projBtn.textContent = 'Projects';
+  nav.appendChild(projBtn);
+
   // Archive button
   const archBtn = document.createElement('button');
   archBtn.className = 'nav-btn archive-btn';
   archBtn.dataset.page = 'archive';
   archBtn.textContent = 'Archive';
   nav.appendChild(archBtn);
+
+  // Instructions button
+  const helpBtn = document.createElement('button');
+  helpBtn.className = 'nav-btn instructions-btn';
+  helpBtn.dataset.page = 'instructions';
+  helpBtn.textContent = 'How To Use';
+  nav.appendChild(helpBtn);
 
   state.staff.forEach((s, i) => {
     const btn = document.createElement('button');
@@ -708,6 +787,8 @@ function switchPage(pageId) {
         </div></div>`;
     }
   }
+  if (pageId === 'projects') renderProjectsPage();
+  if (pageId === 'instructions') renderInstructionsPage();
 }
 
 // ========== STAFF PAGES ==========
@@ -1066,6 +1147,208 @@ function deleteArchive() {
   saveArchives(archives);
   renderArchivePage();
   showToast('Archive deleted.');
+}
+
+// ========== PROJECTS PAGE ==========
+function renderProjectsPage() {
+  const container = document.getElementById('projectsContent');
+  const deals = state.deals || [];
+
+  let html = `
+    <div class="card">
+      <div class="card-header teal">Project / Deal List</div>
+      <div class="section-note">These projects appear as dropdown options in every staff member's task list. Add new projects as they come in. Removing a project won't affect previously saved tasks.</div>
+      <div>
+        ${deals.map((d, i) => `
+          <div class="project-item">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="project-num">${i+1}.</span>
+              <span class="project-name">${esc(d)}</span>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="removeProject(${i})" title="Remove project" style="padding:4px 10px">✕</button>
+          </div>`).join('')}
+        ${deals.length === 0 ? '<div class="empty-state">No projects yet. Add your first one below.</div>' : ''}
+      </div>
+      <div class="project-add-row">
+        <input type="text" id="newProjectInput" placeholder="Enter new project / deal name..." onkeydown="if(event.key==='Enter')addProject()">
+        <button class="btn btn-primary" onclick="addProject()">+ Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header teal">Task Types</div>
+      <div class="section-note">These are the work categories shown in the "Type" dropdown for each task.</div>
+      <div>
+        ${TASK_TYPES.map((t, i) => `
+          <div class="project-item">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="project-num">${i+1}.</span>
+              <span class="project-name">${esc(t)}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="section-note" style="border-top:1px solid var(--gray-200)">Task types are fixed. Contact your admin to modify them.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-body" style="text-align:center">
+        <span style="font-size:13px;color:var(--gray-500)">Total: <strong>${deals.length}</strong> projects</span>
+      </div>
+    </div>`;
+
+  container.innerHTML = html;
+}
+
+function addProject() {
+  const input = document.getElementById('newProjectInput');
+  const name = input.value.trim();
+  if (!name) { alert('Please enter a project name.'); return; }
+  if (state.deals.some(d => d.toLowerCase() === name.toLowerCase())) {
+    alert('This project already exists.');
+    return;
+  }
+  state.deals.push(name);
+  state.deals.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  saveState();
+  renderProjectsPage();
+  // Rebuild staff pages so dropdowns update
+  buildStaffPages();
+  showToast('"' + name + '" added to projects.');
+}
+
+function removeProject(idx) {
+  const name = state.deals[idx];
+  if (!confirm('Remove "' + name + '" from the project list?')) return;
+  state.deals.splice(idx, 1);
+  saveState();
+  renderProjectsPage();
+  buildStaffPages();
+  showToast('"' + name + '" removed.');
+}
+
+// ========== INSTRUCTIONS PAGE ==========
+function renderInstructionsPage() {
+  const container = document.getElementById('instructionsContent');
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-header">How To Use This Timesheet</div>
+      <div class="section-note">A quick guide for staff and managers. This replaces the old Excel-based instructions.</div>
+      <div class="card-body">
+
+        <h3 style="margin-bottom:16px;color:var(--primary)">Getting Started</h3>
+
+        <div class="instructions-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Open the Link</h4>
+            <p>Open the timesheet link in any browser (phone, tablet, or computer). No login needed — your data is saved automatically in your browser.</p>
+          </div>
+        </div>
+
+        <div class="instructions-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Find Your Tab</h4>
+            <p>Click your name in the navigation bar at the top. This opens your personal weekly planning page.</p>
+          </div>
+        </div>
+
+        <div class="instructions-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Fill In Your Availability</h4>
+            <p>In Section A, select your days off, workload level, bandwidth, and any comments. The capacity percentage updates automatically.</p>
+          </div>
+        </div>
+
+        <div class="instructions-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>Plan Your Tasks</h4>
+            <p>In Section B, select projects from the dropdown, choose the task type, set start/end dates, priority, and estimated hours. You can plan up to 4 tasks per week.</p>
+          </div>
+        </div>
+
+        <div class="instructions-step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <h4>Click Save</h4>
+            <p>Hit the blue "Save" button at the bottom of your page. Your data is saved to your browser automatically, but clicking Save confirms it.</p>
+          </div>
+        </div>
+
+        <div class="instructions-step">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <h4>Submit by Thursday EOD</h4>
+            <p>Complete your plan before Thursday end of day. The submission date is set automatically — you don't need to change it.</p>
+          </div>
+        </div>
+
+        <hr style="margin:24px 0;border:none;border-top:1px solid var(--gray-200)">
+
+        <h3 style="margin-bottom:16px;color:var(--primary)">Roles & Permissions</h3>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px">
+          <div class="role-card">
+            <h4 style="color:var(--primary)">Staff Members</h4>
+            <ul>
+              <li>Fill in your own weekly plan</li>
+              <li>View the Dashboard (read-only summary)</li>
+              <li>View the Projects list</li>
+              <li>Cannot remove staff or view archives</li>
+            </ul>
+          </div>
+          <div class="role-card">
+            <h4 style="color:#805ad5">Managers (PIN required)</h4>
+            <ul>
+              <li>Everything staff can do, plus:</li>
+              <li>Add or remove staff members</li>
+              <li>Add or remove projects</li>
+              <li>Archive weeks for long-term records</li>
+              <li>View archives & staff analytics</li>
+              <li>Change the manager PIN</li>
+              <li>Set the "Week of" date for everyone</li>
+            </ul>
+          </div>
+        </div>
+
+        <hr style="margin:24px 0;border:none;border-top:1px solid var(--gray-200)">
+
+        <h3 style="margin-bottom:16px;color:var(--primary)">Key Features</h3>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+          <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
+            <strong>Dashboard</strong>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">See all staff availability, planned tasks, and pipeline summary in one view.</p>
+          </div>
+          <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
+            <strong>Projects Tab</strong>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">Add new deals and projects as they come in. They instantly appear in every staff member's dropdown.</p>
+          </div>
+          <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
+            <strong>Archive</strong>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">Save each week's data before moving to the next. View past weeks, staff analytics, and team trends over time.</p>
+          </div>
+          <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
+            <strong>Auto Dates</strong>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">The manager sets the "Week of" date once. All staff submission dates auto-calculate — no confusion about dates.</p>
+          </div>
+        </div>
+
+        <hr style="margin:24px 0;border:none;border-top:1px solid var(--gray-200)">
+
+        <h3 style="margin-bottom:12px;color:var(--primary)">Important Notes</h3>
+        <ul style="padding-left:20px;font-size:14px;color:var(--gray-700);line-height:2">
+          <li><strong>Data is stored in your browser.</strong> Each person's data stays on their own device. Clearing browser data will erase your entries.</li>
+          <li><strong>Work week:</strong> Sunday to Thursday.</li>
+          <li><strong>Submission deadline:</strong> Thursday end of day.</li>
+          <li><strong>Default manager PIN:</strong> 1234 — change it from the Dashboard under Manager Settings.</li>
+          <li><strong>Archive before switching weeks</strong> to keep a record. The system will remind you when you change the "Week of" date.</li>
+        </ul>
+
+      </div>
+    </div>`;
 }
 
 // ========== STAFF ANALYTICS ==========
