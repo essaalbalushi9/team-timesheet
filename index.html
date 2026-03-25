@@ -473,9 +473,18 @@
 
   @media (max-width: 768px) {
     .topbar h1 { font-size: 16px; }
-    .main { padding: 0 12px; margin: 12px auto; }
+    .topbar { flex-direction: column; gap: 8px; }
+    .main { padding: 0 8px; margin: 8px auto; }
     .nav-btn { padding: 10px 12px; font-size: 13px; }
     .bar-label { min-width: 70px; font-size: 12px; }
+    .task-table th, .task-table td { padding: 6px 4px; font-size: 12px; }
+    .task-table input, .task-table select { padding: 6px; font-size: 12px; }
+    .staff-identity { grid-template-columns: 1fr 1fr; }
+    .avail-grid { grid-template-columns: 1fr; }
+    .actions { flex-direction: column; }
+    .actions .btn { width: 100%; text-align: center; }
+    .dash-table th, .dash-table td { padding: 8px 6px; font-size: 12px; }
+    .card-body { padding: 12px; }
   }
 </style>
 </head>
@@ -507,7 +516,7 @@
         <table class="dash-table" id="dashAvailTable">
           <thead>
             <tr>
-              <th>Name</th><th>Role</th><th>Manager</th><th>Days Off</th>
+              <th>Status</th><th>Name</th><th>Role</th><th>Manager</th><th>Days Off</th>
               <th>Available</th><th>Capacity</th><th>Workload</th><th>Bandwidth</th><th>Comments</th>
             </tr>
           </thead>
@@ -629,6 +638,7 @@ function loadState() {
     workload: '',
     bandwidth: '',
     comments: '',
+    submitted: false,
     tasks: [{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
             {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
             {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
@@ -815,12 +825,9 @@ function buildStaffHTML(s, idx) {
       <div class="section-note">${s.name || 'New Staff'} | ${s.role || 'Role'} | ${s.manager || 'Manager'} | Due: Thursday EOD | Covers: coming Sunday-Thursday</div>
       <div class="card-body">
         <div class="staff-identity">
-          <div><label>Name</label><input value="${esc(s.name)}" onchange="updateStaff(${idx},'name',this.value)" class="input-highlight"></div>
-          <div><label>Role</label><select onchange="updateStaff(${idx},'role',this.value)" class="input-highlight">
-            <option value="">Select...</option>
-            ${ROLES.map(r=>`<option ${s.role===r?'selected':''}>${r}</option>`).join('')}
-          </select></div>
-          <div><label>Manager</label><input value="${esc(s.manager)}" onchange="updateStaff(${idx},'manager',this.value)" class="input-highlight"></div>
+          <div><label>Name</label><input value="${esc(s.name)}" readonly style="background:#edf2f7;cursor:not-allowed" title="Contact manager to change"></div>
+          <div><label>Role</label><input value="${esc(s.role)}" readonly style="background:#edf2f7;cursor:not-allowed" title="Contact manager to change"></div>
+          <div><label>Manager</label><input value="${esc(s.manager)}" readonly style="background:#edf2f7;cursor:not-allowed" title="Contact manager to change"></div>
           <div><label>Submission Date (auto)</label><input type="date" value="${s.weekDate||''}" readonly style="background:#edf2f7;cursor:not-allowed" title="Set by manager via Dashboard 'Week of' date"></div>
         </div>
       </div>
@@ -901,9 +908,12 @@ function buildStaffHTML(s, idx) {
           </tbody>
         </table>
       </div>
-      <div class="actions">
+      <div class="actions" style="flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="editStaffInfo(${idx})">Edit Staff Info (Manager)</button>
         <button class="btn btn-danger btn-sm" onclick="removeStaff(${idx})">Remove Staff</button>
-        <button class="btn btn-primary" onclick="saveAndNotify()">Save</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-accent" onclick="markSubmitted(${idx})">${s.submitted ? '✓ Submitted' : 'Submit Plan'}</button>
+        <button class="btn btn-primary" onclick="saveAndNotify()">Save Draft</button>
       </div>
     </div>
   `;
@@ -912,6 +922,10 @@ function buildStaffHTML(s, idx) {
 // ========== UPDATES ==========
 function updateStaff(idx, field, value) {
   state.staff[idx][field] = value;
+  // Clear submitted status when plan changes
+  if (['daysOff','workload','bandwidth','comments'].includes(field)) {
+    state.staff[idx].submitted = false;
+  }
   saveState();
   if (field === 'name') {
     buildNav();
@@ -920,7 +934,33 @@ function updateStaff(idx, field, value) {
 }
 
 function updateTask(staffIdx, taskIdx, field, value) {
-  state.staff[staffIdx].tasks[taskIdx][field] = value;
+  const task = state.staff[staffIdx].tasks[taskIdx];
+
+  // Hours validation
+  if (field === 'hours') {
+    const h = parseInt(value);
+    if (value !== '' && (isNaN(h) || h < 0 || h > 40)) {
+      alert('Hours must be between 0 and 40 per task.');
+      rebuildStaffPage(staffIdx);
+      return;
+    }
+  }
+
+  // Date validation: end can't be before start
+  if (field === 'end' && task.start && value && value < task.start) {
+    alert('End date cannot be before the start date.');
+    rebuildStaffPage(staffIdx);
+    return;
+  }
+  if (field === 'start' && task.end && value && value > task.end) {
+    alert('Start date cannot be after the end date.');
+    rebuildStaffPage(staffIdx);
+    return;
+  }
+
+  task[field] = value;
+  // Clear submitted status when plan changes
+  state.staff[staffIdx].submitted = false;
   saveState();
 }
 
@@ -932,9 +972,14 @@ function rebuildStaffPage(idx) {
 }
 
 function addStaff() {
+  if (!checkPIN()) return;
+  const name = prompt('New staff member name:');
+  if (!name || !name.trim()) return;
+  const role = prompt('Role (e.g. Analyst, Associate):') || '';
+  const manager = prompt('Manager name:') || '';
   state.staff.push({
-    name: '', role: '', manager: '', weekDate: '', daysOff: 0,
-    workload: '', bandwidth: '', comments: '',
+    name: name.trim(), role: role.trim(), manager: manager.trim(), weekDate: '', daysOff: 0,
+    workload: '', bandwidth: '', comments: '', submitted: false,
     tasks: [{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
             {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
             {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
@@ -944,6 +989,45 @@ function addStaff() {
   buildNav();
   buildStaffPages();
   switchPage('staff-' + (state.staff.length - 1));
+  showToast(name.trim() + ' added.');
+}
+
+function editStaffInfo(idx) {
+  if (!checkPIN()) return;
+  const s = state.staff[idx];
+  const newName = prompt('Name:', s.name);
+  if (newName === null) return;
+  const newRole = prompt('Role:', s.role);
+  if (newRole === null) return;
+  const newManager = prompt('Manager:', s.manager);
+  if (newManager === null) return;
+  s.name = newName.trim();
+  s.role = newRole.trim();
+  s.manager = newManager.trim();
+  saveState();
+  buildNav();
+  buildStaffPages();
+  switchPage('staff-' + idx);
+  showToast('Staff info updated.');
+}
+
+function markSubmitted(idx) {
+  const s = state.staff[idx];
+  // Validate: at least one task with a deal selected
+  const hasTasks = s.tasks.some(t => t.deal);
+  if (!hasTasks) {
+    alert('Please add at least one task before submitting.');
+    return;
+  }
+  // Validate: workload and bandwidth filled
+  if (!s.workload || !s.bandwidth) {
+    alert('Please fill in Workload Level and Bandwidth before submitting.');
+    return;
+  }
+  s.submitted = true;
+  saveState();
+  rebuildStaffPage(idx);
+  showToast(s.name + ' — plan submitted!');
 }
 
 function removeStaff(idx) {
@@ -961,7 +1045,7 @@ function removeStaff(idx) {
 // ========== DASHBOARD ==========
 function renderDashboard() {
   const active = state.staff.filter(s => s.name);
-  const submitted = active.filter(s => s.weekDate);
+  const submitted = active.filter(s => s.submitted);
   const available = active.filter(s => s.bandwidth && s.bandwidth.includes('Available'));
   const light = active.filter(s => s.workload && s.workload.includes('Light'));
   const archCount = loadArchives().length;
@@ -984,6 +1068,7 @@ function renderDashboard() {
         : s.bandwidth.includes('Limited') ? 'badge-yellow' : 'badge-red'
       : 'badge-gray';
     return `<tr>
+      <td>${s.submitted ? '<span class="badge badge-green">Submitted</span>' : '<span class="badge badge-red">Pending</span>'}</td>
       <td><strong>${esc(s.name)}</strong></td>
       <td>${esc(s.role)}</td>
       <td>${esc(s.manager)}</td>
@@ -1203,8 +1288,12 @@ function addProject() {
   const input = document.getElementById('newProjectInput');
   const name = input.value.trim();
   if (!name) { alert('Please enter a project name.'); return; }
-  if (state.deals.some(d => d.toLowerCase() === name.toLowerCase())) {
+  if (state.deals.some(d => d.trim().toLowerCase() === name.toLowerCase())) {
     alert('This project already exists.');
+    return;
+  }
+  if (name.length < 2) {
+    alert('Project name must be at least 2 characters.');
     return;
   }
   state.deals.push(name);
@@ -1650,24 +1739,23 @@ document.getElementById('globalWeek').addEventListener('change', function() {
   const oldWeek = localStorage.getItem('id_timesheet_weekof');
   const newWeek = this.value;
 
-  // If there was a previous week with data, offer to archive
+  // Auto-archive previous week if it has data (prevents accidental loss)
   if (oldWeek && oldWeek !== newWeek) {
     const hasData = state.staff.some(s => s.name && s.tasks.some(t => t.deal));
     if (hasData) {
-      if (confirm('Archive the current week (' + oldWeek + ') before switching?')) {
-        // Archive without PIN check here since they're already changing the week
-        const archives = loadArchives();
-        const existing = archives.findIndex(a => a.weekOf === oldWeek);
-        if (existing >= 0) archives.splice(existing, 1);
-        archives.push({
-          weekOf: oldWeek,
-          archivedAt: new Date().toISOString(),
-          staff: JSON.parse(JSON.stringify(state.staff))
-        });
-        archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf));
-        saveArchives(archives);
-        showToast('Week of ' + oldWeek + ' archived!');
-      }
+      const archives = loadArchives();
+      const existing = archives.findIndex(a => a.weekOf === oldWeek);
+      if (existing >= 0) archives.splice(existing, 1);
+      archives.push({
+        weekOf: oldWeek,
+        archivedAt: new Date().toISOString(),
+        staff: JSON.parse(JSON.stringify(state.staff))
+      });
+      archives.sort((a,b) => b.weekOf.localeCompare(a.weekOf));
+      saveArchives(archives);
+      // Reset submitted status for the new week
+      state.staff.forEach(s => { s.submitted = false; });
+      showToast('Week of ' + oldWeek + ' auto-archived. New week ready.');
     }
   }
 
@@ -1680,7 +1768,7 @@ document.getElementById('globalWeek').addEventListener('change', function() {
 
 // ========== INIT ==========
 function loadSampleData() {
-  const DATA_VERSION = 5; // bump to reset entries
+  const DATA_VERSION = 6; // bump to reset entries
   const savedVersion = localStorage.getItem('id_timesheet_version');
   if (savedVersion == DATA_VERSION) return;
   localStorage.removeItem('id_timesheet_data');
