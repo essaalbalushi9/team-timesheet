@@ -1200,7 +1200,6 @@ function renderProjectsPage() {
 }
 
 function addProject() {
-  if (!checkPIN()) return;
   const input = document.getElementById('newProjectInput');
   const name = input.value.trim();
   if (!name) { alert('Please enter a project name.'); return; }
