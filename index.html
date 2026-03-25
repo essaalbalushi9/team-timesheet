@@ -842,21 +842,21 @@ function buildStaffHTML(s, idx) {
           </div>
           <div>
             <label>Workload Level</label>
-            <select onchange="updateStaff(${idx},'workload',this.value)" class="input-highlight" ${locked?'disabled':''}>
+            <select onchange="updateStaff(${idx},'workload',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}>
               <option value="">Select...</option>
               ${WORKLOAD_LEVELS.map(w=>`<option ${s.workload===w?'selected':''}>${w}</option>`).join('')}
             </select>
           </div>
           <div>
             <label>Bandwidth for New Work</label>
-            <select onchange="updateStaff(${idx},'bandwidth',this.value)" class="input-highlight" ${locked?'disabled':''}>
+            <select onchange="updateStaff(${idx},'bandwidth',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}>
               <option value="">Select...</option>
               ${BANDWIDTH_OPTIONS.map(b=>`<option ${s.bandwidth===b?'selected':''}>${b}</option>`).join('')}
             </select>
           </div>
           <div>
             <label>Comments / Flags</label>
-            <textarea onchange="updateStaff(${idx},'comments',this.value)" class="input-highlight" ${locked?'disabled':''}>${esc(s.comments||'')}</textarea>
+            <textarea onchange="updateStaff(${idx},'comments',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}>${esc(s.comments||'')}</textarea>
           </div>
         </div>
       </div>
@@ -877,22 +877,22 @@ function buildStaffHTML(s, idx) {
           <tbody>
             ${s.tasks.map((t,ti) => `<tr>
               <td class="row-num">${ti+1}</td>
-              <td><select onchange="updateTask(${idx},${ti},'deal',this.value)" class="input-highlight" ${locked?'disabled':''}>
+              <td><select onchange="updateTask(${idx},${ti},'deal',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}>
                 <option value="">Select deal...</option>
                 ${state.deals.map(d=>`<option ${t.deal===d?'selected':''}>${d}</option>`).join('')}
               </select></td>
-              <td><select onchange="updateTask(${idx},${ti},'type',this.value)" class="input-highlight" ${locked?'disabled':''}>
+              <td><select onchange="updateTask(${idx},${ti},'type',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}>
                 <option value="">Select...</option>
                 ${TASK_TYPES.map(tp=>`<option ${t.type===tp?'selected':''}>${tp}</option>`).join('')}
               </select></td>
-              <td><input type="date" value="${t.start||''}" onchange="updateTask(${idx},${ti},'start',this.value)" class="input-highlight" ${locked?'disabled':''}></td>
-              <td><input type="date" value="${t.end||''}" onchange="updateTask(${idx},${ti},'end',this.value)" class="input-highlight" ${locked?'disabled':''}></td>
-              <td><select onchange="updateTask(${idx},${ti},'priority',this.value)" class="input-highlight" ${locked?'disabled':''}>
+              <td><input type="date" value="${t.start||''}" onchange="updateTask(${idx},${ti},'start',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}></td>
+              <td><input type="date" value="${t.end||''}" onchange="updateTask(${idx},${ti},'end',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}></td>
+              <td><select onchange="updateTask(${idx},${ti},'priority',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}>
                 <option value="">Select...</option>
                 ${PRIORITIES.map(p=>`<option ${t.priority===p?'selected':''}>${p}</option>`).join('')}
               </select></td>
               <td><input type="number" min="0" max="40" value="${t.hours||''}" onchange="updateTask(${idx},${ti},'hours',this.value)" class="input-highlight" style="width:70px" ${locked?'disabled':''}></td>
-              <td><input value="${esc(t.notes||'')}" onchange="updateTask(${idx},${ti},'notes',this.value)" class="input-highlight" ${locked?'disabled':''}></td>
+              <td><input value="${esc(t.notes||'')}" onchange="updateTask(${idx},${ti},'notes',this.value)" class="${locked?'':'input-highlight'}" ${locked?'disabled style="background:#edf2f7;cursor:not-allowed"':''}></td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -1284,7 +1284,7 @@ function renderDashboard() {
     if (missingHours > 0) warnings.push(missingHours + ' task(s) missing hours');
 
     // Last edited
-    const lastEdit = s.lastEdited ? timeAgo(s.lastEdited) : 'Never';
+    const lastEdit = s.lastEdited ? timeAgo(s.lastEdited) : '<span style="color:var(--red)">Not started</span>';
 
     // Find real index in state.staff
     const realIdx = state.staff.indexOf(s);
