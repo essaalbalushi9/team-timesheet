@@ -563,7 +563,6 @@
       <div class="card-body">
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="showChangePIN()">Change Manager PIN</button>
-<button class="btn btn-purple btn-sm" onclick="archiveCurrentWeek()">Archive This Week</button>
           <button class="btn btn-outline btn-sm" id="undoRemoveBtn" onclick="undoRemoveStaff()" style="display:none;color:var(--accent)">Undo Remove Staff</button>
           <span style="font-size:12px;color:var(--gray-500)">PIN is required to remove staff or access manager settings.</span>
         </div>
@@ -1250,8 +1249,8 @@ function renderArchivePage() {
       <div class="card">
         <div class="card-body empty-state">
           <h3 style="margin-bottom:8px">No Archived Weeks Yet</h3>
-          <p>Go to Dashboard and click "Archive This Week" to save the current week's data.<br>
-          Then come back here to view past weeks and analytics.</p>
+          <p>Weeks are archived automatically when the week advances.<br>
+          Past weeks and analytics will appear here.</p>
         </div>
       </div>`;
     return;
@@ -1516,7 +1515,7 @@ function renderInstructionsPage() {
               <li>Add or remove staff members (with undo option)</li>
               <li>Remove projects from the list</li>
               <li>Request revision on submitted plans</li>
-              <li>Archive weeks for long-term records</li>
+              <li>View archived weeks and long-term records</li>
               <li>View archives & staff analytics</li>
               <li>Change the manager PIN</li>
               <li>Set the "Week of" date for everyone</li>
@@ -1539,7 +1538,7 @@ function renderInstructionsPage() {
           </div>
           <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
             <strong>Archive</strong>
-            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">Each week's data is automatically archived when the week advances. Managers can also archive manually. View past weeks, staff analytics, and team trends over time.</p>
+            <p style="font-size:13px;color:var(--gray-500);margin-top:4px">Each week's data is automatically archived when the week advances. View past weeks, staff analytics, and team trends over time.</p>
           </div>
           <div style="padding:16px;background:var(--gray-50);border-radius:var(--radius)">
             <strong>Auto Dates & Week Advance</strong>
@@ -1558,7 +1557,7 @@ function renderInstructionsPage() {
           <li><strong>Work week:</strong> Sunday to Thursday.</li>
           <li><strong>Submission deadline:</strong> Thursday end of day.</li>
           <li><strong>Manager PIN:</strong> Required for admin actions. Contact your manager if needed.</li>
-          <li><strong>Auto-archive:</strong> Previous weeks are automatically archived when the week advances. Managers can also archive manually from the Dashboard.</li>
+          <li><strong>Auto-archive:</strong> Previous weeks are automatically archived when the week advances.</li>
           <li><strong>After submitting:</strong> Your plan is locked. If changes are needed, ask your manager to request a revision.</li>
         </ul>
 
