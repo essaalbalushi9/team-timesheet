@@ -1828,11 +1828,53 @@ function getGlobalWeek() {
 function initGlobalWeek() {
   const el = document.getElementById('globalWeek');
   const saved = localStorage.getItem('id_timesheet_weekof');
+  const comingSunday = toDateStr(getComingSunday());
+
   if (saved) {
     el.value = saved;
+
+    // Auto-advance: if the saved "Week of" is in the past (before the coming Sunday),
+    // auto-archive it and move to the current week
+    if (saved < comingSunday) {
+      const hasData = state.staff.some(s => s.name && s.tasks.some(t => t.deal));
+      if (hasData) {
+        // Archive each missed week
+        const archives = loadArchives();
+        const existing = archives.findIndex(a => a.weekOf === saved);
+        if (existing >= 0) archives.splice(existing, 1);
+        archives.push({
+          weekOf: saved,
+          archivedAt: new Date().toISOString(),
+          staff: JSON.parse(JSON.stringify(state.staff))
+        });
+        archives.sort((a, b) => b.weekOf.localeCompare(a.weekOf));
+        saveArchives(archives);
+      }
+
+      // Reset all staff for the new week
+      state.staff.forEach(s => {
+        s.submitted = false;
+        s.submittedAt = '';
+        s.revision = false;
+        s.revisionNote = '';
+        s.lastEdited = '';
+        // Clear tasks for fresh week
+        s.daysOff = 0;
+        s.workload = '';
+        s.bandwidth = '';
+        s.comments = '';
+        s.tasks = s.tasks.map(() => ({deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''}));
+      });
+      saveState();
+
+      // Advance to coming Sunday
+      el.value = comingSunday;
+      localStorage.setItem('id_timesheet_weekof', comingSunday);
+      showToast('Week auto-advanced to ' + comingSunday + '. Previous week archived.');
+    }
   } else {
-    el.value = toDateStr(getComingSunday());
-    localStorage.setItem('id_timesheet_weekof', el.value);
+    el.value = comingSunday;
+    localStorage.setItem('id_timesheet_weekof', comingSunday);
   }
   syncStaffDates();
 }
