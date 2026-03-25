@@ -759,7 +759,20 @@ function switchPage(pageId) {
   if (page) page.classList.add('active');
 
   if (pageId === 'dashboard') renderDashboard();
-  if (pageId === 'archive') renderArchivePage();
+  if (pageId === 'archive') {
+    // Manager-only: require PIN to view archive
+    const unlocked = sessionStorage.getItem('id_timesheet_archive_unlocked');
+    if (unlocked === 'true') {
+      renderArchivePage();
+    } else {
+      document.getElementById('archiveContent').innerHTML = `
+        <div class="card"><div class="card-body empty-state">
+          <h3 style="margin-bottom:8px">Manager Access Required</h3>
+          <p style="margin-bottom:16px">Enter the manager PIN to view archived weeks and analytics.</p>
+          <button class="btn btn-purple" onclick="unlockArchive()">Unlock Archive</button>
+        </div></div>`;
+    }
+  }
 }
 
 // ========== STAFF PAGES ==========
@@ -1097,6 +1110,14 @@ function renderArchivedWeekDetail() {
   document.getElementById('archivedWeekDetail').innerHTML = html;
 }
 
+function unlockArchive() {
+  verifyManager(() => {
+    sessionStorage.setItem('id_timesheet_archive_unlocked', 'true');
+    renderArchivePage();
+    showToast('Archive unlocked for this session.');
+  });
+}
+
 function deleteArchive() {
   verifyManager(() => {
     const archives = loadArchives();
@@ -1149,8 +1170,8 @@ function buildStaffAnalytics(archives) {
     const avgHours = sm.weeks > 0 ? Math.round(sm.totalHours / sm.weeks) : 0;
     const avgDaysOff = sm.daysOffList.length > 0 ? (sm.daysOffList.reduce((a,b)=>a+b,0) / sm.daysOffList.length).toFixed(1) : '0';
 
-    // Top 3 deals
-    const topDeals = Object.entries(sm.deals).sort((a,b) => b[1]-a[1]).slice(0,3);
+    // All deals sorted by hours
+    const topDeals = Object.entries(sm.deals).sort((a,b) => b[1]-a[1]);
 
     // Task type breakdown
     const typeTotal = Object.values(sm.types).reduce((a,b)=>a+b,0);
@@ -1178,7 +1199,7 @@ function buildStaffAnalytics(archives) {
           <div class="analytics-metric"><div class="metric-value" style="color:${overloadPct>60?'var(--red)':overloadPct>30?'var(--accent)':'var(--green)'}">${overloadPct}%</div><div class="metric-label">Weeks Overloaded</div></div>
         </div>
 
-        <h4 style="margin-bottom:8px">Top Deals</h4>
+        <h4 style="margin-bottom:8px">All Projects / Deals</h4>
         ${topDeals.length ? topDeals.map((d,i) => `<span class="badge badge-purple" style="margin:2px">${i+1}. ${esc(d[0])} (${d[1]}h)</span>`).join('') : '<span style="color:var(--gray-500)">No deals recorded</span>'}
 
         ${typeBreakdown.length ? `
