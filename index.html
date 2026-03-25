@@ -1680,49 +1680,14 @@ document.getElementById('globalWeek').addEventListener('change', function() {
 
 // ========== INIT ==========
 function loadSampleData() {
-  const DATA_VERSION = 4;
+  const DATA_VERSION = 5; // bump to reset entries
   const savedVersion = localStorage.getItem('id_timesheet_version');
   if (savedVersion == DATA_VERSION) return;
   localStorage.removeItem('id_timesheet_data');
-  state = loadState();
+  localStorage.removeItem('id_timesheet_archives');
+  localStorage.removeItem('id_timesheet_weekof');
+  state = loadState(); // loads fresh defaults: staff names + projects, empty tasks
   localStorage.setItem('id_timesheet_version', DATA_VERSION);
-
-  const samples = [
-    { idx:0, daysOff:0, workload:"Moderate (50-75%)", bandwidth:"Limited - small tasks only",
-      tasks:[{deal:"Restaurant robotics",type:"Screening",start:"2026-03-17",end:"2026-03-19",priority:"High",hours:"20",notes:""},
-             {deal:"Elysium",type:"Due Diligence",start:"2026-03-25",end:"2026-03-31",priority:"Medium",hours:"10",notes:""}]},
-    { idx:1, daysOff:0, workload:"Moderate (50-75%)", bandwidth:"Limited - small tasks only",
-      tasks:[{deal:"Project Olivine",type:"Due Diligence",start:"2026-03-17",end:"2026-03-31",priority:"Medium",hours:"30",notes:""},
-             {deal:"Quantum Graphite",type:"Financial Modelling",start:"2026-03-18",end:"2026-03-23",priority:"High",hours:"20",notes:""}]},
-    { idx:2, daysOff:5, workload:"", bandwidth:"Unavailable - fully committed",
-      tasks:[{deal:"Annual leave",type:"Admin / Other",start:"",end:"",priority:"",hours:"",notes:""}]},
-    { idx:3, daysOff:0, workload:"At Capacity (>90%)", bandwidth:"Unavailable - fully committed",
-      tasks:[{deal:"Restaurant robotics",type:"IC1 Prep",start:"2026-03-17",end:"2026-03-19",priority:"High",hours:"20",notes:""},
-             {deal:"Data Center",type:"Due Diligence",start:"2026-03-19",end:"2026-03-30",priority:"High",hours:"10",notes:""}]},
-    { idx:4, daysOff:2, workload:"At Capacity (>90%)", bandwidth:"Limited - small tasks only",
-      tasks:[{deal:"Project Olivine",type:"",start:"2026-03-20",end:"2026-03-21",priority:"High",hours:"14",notes:""},
-             {deal:"Travel",type:"",start:"2026-03-17",end:"2026-03-19",priority:"High",hours:"14",notes:""}]},
-    { idx:5, daysOff:0, workload:"Light (<50%)", bandwidth:"Available - can take new work",
-      tasks:[{deal:"NHU",type:"Screening",start:"2026-03-17",end:"2026-03-19",priority:"Medium",hours:"20",notes:""}]},
-    { idx:6, daysOff:0, workload:"At Capacity (>90%)", bandwidth:"Unavailable - fully committed",
-      tasks:[{deal:"Chime Biologics",type:"IC2 Prep",start:"2026-03-17",end:"2026-03-21",priority:"High",hours:"",notes:""}]},
-    { idx:7, daysOff:0, workload:"Light (<50%)", bandwidth:"Available - can take new work",
-      tasks:[{deal:"ESP Cables",type:"Screening",start:"2026-03-17",end:"2026-03-23",priority:"Medium",hours:"7",notes:""}]},
-    { idx:8, daysOff:3, workload:"Moderate (50-75%)", bandwidth:"Limited - small tasks only",
-      tasks:[{deal:"Food Terminal",type:"Financial Modelling",start:"2026-03-17",end:"2026-03-18",priority:"Medium",hours:"10",notes:""}]}
-  ];
-
-  samples.forEach(s => {
-    const staff = state.staff[s.idx];
-    staff.daysOff = s.daysOff;
-    staff.workload = s.workload;
-    staff.bandwidth = s.bandwidth;
-    staff.weekDate = '2026-03-25';
-    s.tasks.forEach((t, ti) => {
-      staff.tasks[ti] = { ...staff.tasks[ti], ...t };
-    });
-  });
-
   saveState();
 }
 
