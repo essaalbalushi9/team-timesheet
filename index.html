@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ID Weekly Timesheet</title>
+<style>
+  :root {
+    --primary: #1a365d;
+    --primary-light: #2c5282;
+    --accent: #ed8936;
+    --green: #38a169;
+    --red: #e53e3e;
+    --yellow: #ecc94b;
+    --gray-50: #f7fafc;
+    --gray-100: #edf2f7;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e0;
+    --gray-500: #718096;
+    --gray-700: #4a5568;
+    --gray-800: #2d3748;
+    --radius: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-800);
+    min-height: 100vh;
+  }
+
+  /* Top bar */
+  .topbar {
+    background: var(--primary);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .topbar h1 { font-size: 20px; font-weight: 600; }
+  .topbar .subtitle { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+
+  /* Navigation */
+  .nav-bar {
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    padding: 0 24px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    position: sticky;
+    top: 60px;
+    z-index: 99;
+  }
+  .nav-btn {
+    padding: 12px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--gray-500);
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { color: var(--primary); background: var(--gray-50); }
+  .nav-btn.active { color: var(--primary); border-bottom-color: var(--accent); font-weight: 600; }
+  .nav-btn.dashboard-btn { color: var(--accent); font-weight: 600; }
+  .nav-btn.dashboard-btn.active { border-bottom-color: var(--accent); }
+
+  /* Main content */
+  .main { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .card-header {
+    background: var(--primary);
+    color: white;
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .card-body { padding: 20px; }
+
+  /* Staff header */
+  .staff-identity {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+
+  /* Form elements */
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--gray-800);
+    background: white;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(44,82,130,0.1);
+  }
+  textarea { resize: vertical; min-height: 60px; }
+
+  .input-highlight {
+    background: #fffff0;
+    border-color: var(--yellow);
+  }
+
+  /* Availability grid */
+  .avail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .avail-stat {
+    text-align: center;
+    padding: 16px;
+    border-radius: var(--radius);
+    background: var(--gray-50);
+  }
+  .avail-stat .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .avail-stat label { margin-top: 4px; }
+
+  /* Task table */
+  .task-table { width: 100%; border-collapse: collapse; }
+  .task-table th {
+    background: var(--gray-100);
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gray-200);
+  }
+  .task-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gray-100);
+    vertical-align: top;
+  }
+  .task-table input, .task-table select {
+    border: 1px solid var(--gray-200);
+    padding: 8px;
+    font-size: 13px;
+  }
+  .task-table .row-num {
+    width: 30px;
+    text-align: center;
+    color: var(--gray-500);
+    font-weight: 600;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-accent { background: var(--accent); color: white; }
+  .btn-accent:hover { background: #dd6b20; }
+  .btn-outline { background: white; color: var(--gray-700); border: 1px solid var(--gray-300); }
+  .btn-outline:hover { background: var(--gray-50); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-danger:hover { background: #c53030; }
+
+  .actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+  /* Week picker */
+  .week-picker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .week-picker input[type="date"] { max-width: 200px; }
+
+  /* Dashboard styles */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .stat-card .number { font-size: 36px; font-weight: 700; }
+  .stat-card .label { font-size: 12px; color: var(--gray-500); text-transform: uppercase; margin-top: 4px; }
+  .stat-green .number { color: var(--green); }
+  .stat-yellow .number { color: var(--accent); }
+  .stat-red .number { color: var(--red); }
+  .stat-blue .number { color: var(--primary); }
+
+  /* Dashboard table */
+  .dash-table { width: 100%; border-collapse: collapse; }
+  .dash-table th {
+    background: var(--primary);
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .dash-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 14px;
+  }
+  .dash-table tr:hover { background: var(--gray-50); }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-green { background: #c6f6d5; color: #22543d; }
+  .badge-yellow { background: #fefcbf; color: #744210; }
+  .badge-red { background: #fed7d7; color: #822727; }
+  .badge-blue { background: #bee3f8; color: #2a4365; }
+  .badge-gray { background: var(--gray-200); color: var(--gray-700); }
+
+  .priority-high { color: var(--red); font-weight: 600; }
+  .priority-medium { color: var(--accent); font-weight: 600; }
+  .priority-low { color: var(--green); font-weight: 600; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--green);
+    color: white;
+    padding: 14px 24px;
+    border-radius: var(--radius);
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 200;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Responsive table wrapper */
+  .table-wrap { overflow-x: auto; }
+
+  /* Section divider */
+  .section-note {
+    font-size: 13px;
+    color: var(--gray-500);
+    padding: 12px 20px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--gray-500);
+  }
+
+  /* Manage Staff */
+  .staff-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .staff-list-item:last-child { border-bottom: none; }
+  .staff-info { display: flex; align-items: center; gap: 12px; }
+  .staff-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  @media (max-width: 768px) {
+    .topbar h1 { font-size: 16px; }
+    .main { padding: 0 12px; margin: 12px auto; }
+    .nav-btn { padding: 10px 12px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Investment Development | Weekly Planner</h1>
+    <div class="subtitle">Team Planning & Workload Tracker</div>
+  </div>
+  <div class="week-picker">
+    <label style="color:white;margin:0;text-transform:none;font-size:13px">Week of:</label>
+    <input type="date" id="globalWeek" style="max-width:170px">
+  </div>
+</div>
+
+<nav class="nav-bar" id="navBar">
+  <button class="nav-btn dashboard-btn active" data-page="dashboard">Dashboard</button>
+</nav>
+
+<div class="main" id="mainContent">
+  <!-- Dashboard Page -->
+  <div class="page active" id="page-dashboard">
+    <div class="stats-row" id="dashStats"></div>
+
+    <div class="card">
+      <div class="card-header">Section 1 -- Team Availability</div>
+      <div class="table-wrap">
+        <table class="dash-table" id="dashAvailTable">
+          <thead>
+            <tr>
+              <th>Name</th><th>Role</th><th>Manager</th><th>Days Off</th>
+              <th>Available</th><th>Capacity</th><th>Workload</th><th>Bandwidth</th><th>Comments</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Section 2 -- All Planned Tasks</div>
+      <div class="table-wrap">
+        <table class="dash-table" id="dashTaskTable">
+          <thead>
+            <tr>
+              <th>Staff</th><th>Task / Deal</th><th>Type</th><th>Start</th>
+              <th>End</th><th>Priority</th><th>Hours</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Section 3 -- Pipeline Summary by Stage</div>
+      <div class="table-wrap">
+        <table class="dash-table" id="dashPipelineTable">
+          <thead>
+            <tr><th>Task Type</th><th>Count</th><th>Total Hours</th><th>Staff Involved</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff pages get injected here -->
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== DATA ==========
+const DEAL_LIST = [
+  "Lithium Refining","Green Steel","Quantum Graphite","Project Olivine","Fish Trading",
+  "Gasgene","Food Terminal","Waste to BioLNG","Air Cargo Platform","Warehousing & Supply Chain",
+  "Qnu Labs","PLD Space Tech","OTC and MENA company strategic partnership",
+  "Enabling the Experiences Sector in Oman","Municipal Waste to RDF","PVC O Pipe","OCTG",
+  "Aviation Recycling","Factorial","Latitude","Crane Manufacturing","Autonomous Driving",
+  "NHU","Elysium","Drone tech","Restaurant robotics","Data Center","ESP Cables",
+  "Chime Biologics","Team training","Admin","Annual leave","Travel"
+];
+
+const TASK_TYPES = [
+  "Screening","Due Diligence","Financial Modelling","IC1 Prep","IC2 Prep",
+  "Portfolio Monitoring","Admin / Other"
+];
+
+const PRIORITIES = ["High","Medium","Low"];
+const WORKLOAD_LEVELS = ["Light (<50%)","Moderate (50-75%)","Heavy (75-90%)","At Capacity (>90%)"];
+const BANDWIDTH_OPTIONS = [
+  "Available - can take new work",
+  "Limited - small tasks only",
+  "Unavailable - fully committed"
+];
+
+const DEFAULT_STAFF = [
+  { name:"Rawan", role:"Analyst", manager:"Issa" },
+  { name:"Hafedh", role:"Analyst", manager:"Pieter" },
+  { name:"Hajar", role:"Associate", manager:"Issa" },
+  { name:"Azhar", role:"Analyst", manager:"Dr. Bashair" },
+  { name:"Ahmed", role:"Sr. Associate", manager:"Thuriya" },
+  { name:"Wail", role:"Analyst", manager:"Talal" },
+  { name:"Amani", role:"Sr. Analyst", manager:"Thuraiya" },
+  { name:"Harkrishan", role:"Sr. Associate", manager:"Talal" },
+  { name:"Garima", role:"Associate", manager:"Talal" }
+];
+
+const ROLES = ["Analyst","Sr. Analyst","Associate","Sr. Associate","VP","Director"];
+
+// ========== STATE ==========
+function loadState() {
+  const saved = localStorage.getItem('id_timesheet_data');
+  if (saved) return JSON.parse(saved);
+  // Initialize with default staff
+  const staff = DEFAULT_STAFF.map(s => ({
+    ...s,
+    weekDate: '',
+    daysOff: 0,
+    workload: '',
+    bandwidth: '',
+    comments: '',
+    tasks: [{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
+            {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
+            {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
+            {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''}]
+  }));
+  return { staff, deals: [...DEAL_LIST] };
+}
+
+let state = loadState();
+
+function saveState() {
+  localStorage.setItem('id_timesheet_data', JSON.stringify(state));
+}
+
+// ========== NAVIGATION ==========
+function buildNav() {
+  const nav = document.getElementById('navBar');
+  // Keep dashboard button, clear the rest
+  nav.innerHTML = '<button class="nav-btn dashboard-btn" data-page="dashboard">Dashboard</button>';
+
+  state.staff.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn';
+    btn.dataset.page = 'staff-' + i;
+    btn.textContent = s.name || 'Staff ' + (i+1);
+    nav.appendChild(btn);
+  });
+
+  // Add staff button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'nav-btn';
+  addBtn.style.color = 'var(--green)';
+  addBtn.textContent = '+ Add Staff';
+  addBtn.onclick = addStaff;
+  nav.appendChild(addBtn);
+
+  // Attach click handlers
+  nav.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
+    btn.onclick = () => switchPage(btn.dataset.page);
+  });
+}
+
+function switchPage(pageId) {
+  document.querySelectorAll('.nav-btn[data-page]').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.querySelector(`.nav-btn[data-page="${pageId}"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + pageId);
+  if (page) page.classList.add('active');
+
+  if (pageId === 'dashboard') renderDashboard();
+}
+
+// ========== STAFF PAGES ==========
+function buildStaffPages() {
+  // Remove old staff pages
+  document.querySelectorAll('.page[id^="page-staff-"]').forEach(p => p.remove());
+
+  state.staff.forEach((s, i) => {
+    const page = document.createElement('div');
+    page.className = 'page';
+    page.id = 'page-staff-' + i;
+    page.innerHTML = buildStaffHTML(s, i);
+    document.getElementById('mainContent').appendChild(page);
+  });
+}
+
+function buildStaffHTML(s, idx) {
+  autoFillSubmissionDate(idx);
+  const availDays = 5 - (s.daysOff || 0);
+  const capacityPct = Math.round((availDays / 5) * 100);
+
+  return `
+    <div class="card">
+      <div class="card-header">Weekly Planning Report</div>
+      <div class="section-note">${s.name || 'New Staff'} | ${s.role || 'Role'} | ${s.manager || 'Manager'} | Due: Thursday EOD | Covers: coming Sunday-Thursday</div>
+      <div class="card-body">
+        <div class="staff-identity">
+          <div><label>Name</label><input value="${esc(s.name)}" onchange="updateStaff(${idx},'name',this.value)" class="input-highlight"></div>
+          <div><label>Role</label><select onchange="updateStaff(${idx},'role',this.value)" class="input-highlight">
+            <option value="">Select...</option>
+            ${ROLES.map(r=>`<option ${s.role===r?'selected':''}>${r}</option>`).join('')}
+          </select></div>
+          <div><label>Manager</label><input value="${esc(s.manager)}" onchange="updateStaff(${idx},'manager',this.value)" class="input-highlight"></div>
+          <div><label>Submission Date (auto)</label><input type="date" value="${s.weekDate||''}" readonly style="background:#edf2f7;cursor:not-allowed" title="Set by manager via Dashboard 'Week of' date"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">A -- Next Week Availability (Sunday - Thursday)</div>
+      <div class="card-body">
+        <div class="avail-grid">
+          <div class="avail-stat">
+            <label>Days Leave / Travel</label>
+            <select onchange="updateStaff(${idx},'daysOff',+this.value);rebuildStaffPage(${idx})" class="input-highlight" style="max-width:100px;margin:8px auto;text-align:center">
+              ${[0,1,2,3,4,5].map(n=>`<option ${s.daysOff==n?'selected':''}>${n}</option>`).join('')}
+            </select>
+          </div>
+          <div class="avail-stat">
+            <div class="value">${availDays}</div>
+            <label>Available Days</label>
+          </div>
+          <div class="avail-stat">
+            <div class="value" style="color:${capacityPct>=80?'var(--green)':capacityPct>=40?'var(--accent)':'var(--red)'}">${capacityPct}%</div>
+            <label>Capacity</label>
+          </div>
+          <div>
+            <label>Workload Level</label>
+            <select onchange="updateStaff(${idx},'workload',this.value)" class="input-highlight">
+              <option value="">Select...</option>
+              ${WORKLOAD_LEVELS.map(w=>`<option ${s.workload===w?'selected':''}>${w}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label>Bandwidth for New Work</label>
+            <select onchange="updateStaff(${idx},'bandwidth',this.value)" class="input-highlight">
+              <option value="">Select...</option>
+              ${BANDWIDTH_OPTIONS.map(b=>`<option ${s.bandwidth===b?'selected':''}>${b}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label>Comments / Flags</label>
+            <textarea onchange="updateStaff(${idx},'comments',this.value)" class="input-highlight">${esc(s.comments||'')}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">B -- Next Week Plan (Sunday - Thursday)</div>
+      <div class="section-note">List up to 4 tasks. Select deal names, type, and priority from dropdowns. Enter hours as whole numbers.</div>
+      <div class="table-wrap">
+        <table class="task-table">
+          <thead>
+            <tr>
+              <th>#</th><th style="min-width:180px">Task / Deal Name</th><th style="min-width:140px">Type</th>
+              <th style="min-width:130px">Start</th><th style="min-width:130px">End</th>
+              <th style="min-width:100px">Priority</th><th style="width:80px">Hours</th><th style="min-width:160px">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${s.tasks.map((t,ti) => `<tr>
+              <td class="row-num">${ti+1}</td>
+              <td><select onchange="updateTask(${idx},${ti},'deal',this.value)" class="input-highlight">
+                <option value="">Select deal...</option>
+                ${state.deals.map(d=>`<option ${t.deal===d?'selected':''}>${d}</option>`).join('')}
+              </select></td>
+              <td><select onchange="updateTask(${idx},${ti},'type',this.value)" class="input-highlight">
+                <option value="">Select...</option>
+                ${TASK_TYPES.map(tp=>`<option ${t.type===tp?'selected':''}>${tp}</option>`).join('')}
+              </select></td>
+              <td><input type="date" value="${t.start||''}" onchange="updateTask(${idx},${ti},'start',this.value)" class="input-highlight"></td>
+              <td><input type="date" value="${t.end||''}" onchange="updateTask(${idx},${ti},'end',this.value)" class="input-highlight"></td>
+              <td><select onchange="updateTask(${idx},${ti},'priority',this.value)" class="input-highlight">
+                <option value="">Select...</option>
+                ${PRIORITIES.map(p=>`<option ${t.priority===p?'selected':''}>${p}</option>`).join('')}
+              </select></td>
+              <td><input type="number" min="0" max="40" value="${t.hours||''}" onchange="updateTask(${idx},${ti},'hours',this.value)" class="input-highlight" style="width:70px"></td>
+              <td><input value="${esc(t.notes||'')}" onchange="updateTask(${idx},${ti},'notes',this.value)" class="input-highlight"></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="btn btn-danger btn-sm" onclick="removeStaff(${idx})">Remove Staff</button>
+        <button class="btn btn-primary" onclick="saveAndNotify()">Save</button>
+      </div>
+    </div>
+  `;
+}
+
+// ========== UPDATES ==========
+function updateStaff(idx, field, value) {
+  state.staff[idx][field] = value;
+  saveState();
+  if (field === 'name') {
+    buildNav();
+    switchPage('staff-' + idx);
+  }
+}
+
+function updateTask(staffIdx, taskIdx, field, value) {
+  state.staff[staffIdx].tasks[taskIdx][field] = value;
+  saveState();
+}
+
+function rebuildStaffPage(idx) {
+  const page = document.getElementById('page-staff-' + idx);
+  if (page) {
+    page.innerHTML = buildStaffHTML(state.staff[idx], idx);
+  }
+}
+
+function addStaff() {
+  state.staff.push({
+    name: '', role: '', manager: '', weekDate: '', daysOff: 0,
+    workload: '', bandwidth: '', comments: '',
+    tasks: [{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
+            {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
+            {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},
+            {deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''}]
+  });
+  saveState();
+  buildNav();
+  buildStaffPages();
+  switchPage('staff-' + (state.staff.length - 1));
+}
+
+function removeStaff(idx) {
+  if (!confirm('Remove ' + (state.staff[idx].name || 'this staff member') + '?')) return;
+  state.staff.splice(idx, 1);
+  saveState();
+  buildNav();
+  buildStaffPages();
+  switchPage('dashboard');
+}
+
+// ========== DASHBOARD ==========
+function renderDashboard() {
+  const active = state.staff.filter(s => s.name);
+  const submitted = active.filter(s => s.weekDate);
+  const available = active.filter(s => s.bandwidth && s.bandwidth.includes('Available'));
+  const light = active.filter(s => s.workload && s.workload.includes('Light'));
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card stat-blue"><div class="number">${active.length}</div><div class="label">Active Staff</div></div>
+    <div class="stat-card stat-green"><div class="number">${submitted.length}</div><div class="label">Submitted</div></div>
+    <div class="stat-card stat-green"><div class="number">${available.length}</div><div class="label">Available</div></div>
+    <div class="stat-card stat-yellow"><div class="number">${light.length}</div><div class="label">Light Workload</div></div>
+  `;
+
+  // Availability table
+  const tbody1 = document.querySelector('#dashAvailTable tbody');
+  tbody1.innerHTML = active.map(s => {
+    const avail = 5 - (s.daysOff || 0);
+    const cap = Math.round((avail/5)*100);
+    const bwBadge = s.bandwidth
+      ? s.bandwidth.includes('Available') ? 'badge-green'
+        : s.bandwidth.includes('Limited') ? 'badge-yellow' : 'badge-red'
+      : 'badge-gray';
+    return `<tr>
+      <td><strong>${esc(s.name)}</strong></td>
+      <td>${esc(s.role)}</td>
+      <td>${esc(s.manager)}</td>
+      <td>${s.daysOff||0}</td>
+      <td>${avail}</td>
+      <td>${cap}%</td>
+      <td>${s.workload ? `<span class="badge badge-blue">${esc(s.workload)}</span>` : '-'}</td>
+      <td>${s.bandwidth ? `<span class="badge ${bwBadge}">${esc(s.bandwidth)}</span>` : '-'}</td>
+      <td>${esc(s.comments||'')}</td>
+    </tr>`;
+  }).join('');
+
+  // Tasks table
+  const tbody2 = document.querySelector('#dashTaskTable tbody');
+  let taskRows = '';
+  active.forEach(s => {
+    s.tasks.forEach(t => {
+      if (!t.deal) return;
+      const pClass = t.priority === 'High' ? 'priority-high' : t.priority === 'Medium' ? 'priority-medium' : 'priority-low';
+      taskRows += `<tr>
+        <td><strong>${esc(s.name)}</strong></td>
+        <td>${esc(t.deal)}</td>
+        <td>${esc(t.type||'')}</td>
+        <td>${formatDate(t.start)}</td>
+        <td>${formatDate(t.end)}</td>
+        <td class="${pClass}">${esc(t.priority||'')}</td>
+        <td>${t.hours||'-'}</td>
+        <td>${esc(t.notes||'')}</td>
+      </tr>`;
+    });
+  });
+  tbody2.innerHTML = taskRows || '<tr><td colspan="8" class="empty-state">No tasks planned yet</td></tr>';
+
+  // Pipeline summary
+  const pipeline = {};
+  active.forEach(s => {
+    s.tasks.forEach(t => {
+      if (!t.deal || !t.type) return;
+      if (!pipeline[t.type]) pipeline[t.type] = { count: 0, hours: 0, staff: new Set() };
+      pipeline[t.type].count++;
+      pipeline[t.type].hours += parseInt(t.hours) || 0;
+      pipeline[t.type].staff.add(s.name);
+    });
+  });
+  const tbody3 = document.querySelector('#dashPipelineTable tbody');
+  const pipeKeys = Object.keys(pipeline).sort();
+  tbody3.innerHTML = pipeKeys.length ? pipeKeys.map(k => {
+    const p = pipeline[k];
+    return `<tr><td>${esc(k)}</td><td>${p.count}</td><td>${p.hours}</td><td>${[...p.staff].join(', ')}</td></tr>`;
+  }).join('') : '<tr><td colspan="4" class="empty-state">No tasks yet</td></tr>';
+}
+
+// ========== HELPERS ==========
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(d) {
+  if (!d) return '-';
+  const dt = new Date(d);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${dt.getDate()}-${months[dt.getMonth()]}-${dt.getFullYear()}`;
+}
+
+function saveAndNotify() {
+  saveState();
+  showToast('Saved successfully!');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ========== DATE HELPERS ==========
+function toDateStr(d) {
+  return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
+}
+
+// Get the coming Sunday (start of work week)
+function getComingSunday() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const day = today.getDay();
+  let diff = 0 - day;             // 0 = Sunday
+  if (diff < 0) diff += 7;
+  if (diff === 0) diff = 0;
+  const result = new Date(today);
+  result.setDate(result.getDate() + diff);
+  return result;
+}
+
+// Derive the submission Thursday from the "Week of" Sunday
+function getThursdayFromSunday(sundayStr) {
+  const sun = new Date(sundayStr + 'T00:00:00');
+  const thu = new Date(sun);
+  thu.setDate(thu.getDate() - 3);  // Thursday is 3 days before Sunday
+  return toDateStr(thu);
+}
+
+// Get the current "Week of" Sunday from the dashboard picker
+function getGlobalWeek() {
+  return document.getElementById('globalWeek').value;
+}
+
+// Auto-set dashboard "Week of" to coming Sunday (only on first load)
+function initGlobalWeek() {
+  const el = document.getElementById('globalWeek');
+  const saved = localStorage.getItem('id_timesheet_weekof');
+  if (saved) {
+    el.value = saved;
+  } else {
+    el.value = toDateStr(getComingSunday());
+    localStorage.setItem('id_timesheet_weekof', el.value);
+  }
+  // Set all staff submission dates to match
+  syncStaffDates();
+}
+
+// When manager changes "Week of", update ALL staff submission dates
+function syncStaffDates() {
+  const weekOf = getGlobalWeek();
+  if (!weekOf) return;
+  const thu = getThursdayFromSunday(weekOf);
+  state.staff.forEach(s => { s.weekDate = thu; });
+  saveState();
+}
+
+// Auto-fill a staff member's weekDate from the dashboard week
+function autoFillSubmissionDate(idx) {
+  const weekOf = getGlobalWeek();
+  if (weekOf && !state.staff[idx].weekDate) {
+    state.staff[idx].weekDate = getThursdayFromSunday(weekOf);
+    saveState();
+  }
+}
+
+// ========== GLOBAL WEEK ==========
+document.getElementById('globalWeek').addEventListener('change', function() {
+  localStorage.setItem('id_timesheet_weekof', this.value);
+  syncStaffDates();
+  // Rebuild current staff page if open
+  buildStaffPages();
+  const activePage = document.querySelector('.nav-btn.active');
+  if (activePage) switchPage(activePage.dataset.page);
+  showToast('Week updated — all submission dates synced to ' + getThursdayFromSunday(this.value));
+});
+
+// ========== INIT ==========
+// Pre-load sample data from the Excel file for first use
+function loadSampleData() {
+  const DATA_VERSION = 3; // bump this to force a data refresh
+  const savedVersion = localStorage.getItem('id_timesheet_version');
+  if (savedVersion == DATA_VERSION) return; // Already have current data
+  localStorage.removeItem('id_timesheet_data');
+  state = loadState(); // reload fresh defaults
+  localStorage.setItem('id_timesheet_version', DATA_VERSION);
+
+  const samples = [
+    { idx:0, daysOff:0, workload:"Moderate (50-75%)", bandwidth:"Limited - small tasks only",
+      tasks:[{deal:"Restaurant robotics",type:"Screening",start:"2026-03-17",end:"2026-03-19",priority:"High",hours:"20",notes:""},
+             {deal:"Elysium",type:"Due Diligence",start:"2026-03-25",end:"2026-03-31",priority:"Medium",hours:"10",notes:""}]},
+    { idx:1, daysOff:0, workload:"Moderate (50-75%)", bandwidth:"Limited - small tasks only",
+      tasks:[{deal:"Project Olivine",type:"Due Diligence",start:"2026-03-17",end:"2026-03-31",priority:"Medium",hours:"30",notes:""},
+             {deal:"Quantum Graphite",type:"Financial Modelling",start:"2026-03-18",end:"2026-03-23",priority:"High",hours:"20",notes:""}]},
+    { idx:2, daysOff:5, workload:"", bandwidth:"Unavailable - fully committed",
+      tasks:[{deal:"Annual leave",type:"Admin / Other",start:"",end:"",priority:"",hours:"",notes:""}]},
+    { idx:3, daysOff:0, workload:"At Capacity (>90%)", bandwidth:"Unavailable - fully committed",
+      tasks:[{deal:"Restaurant robotics",type:"IC1 Prep",start:"2026-03-17",end:"2026-03-19",priority:"High",hours:"20",notes:""},
+             {deal:"Data Center",type:"Due Diligence",start:"2026-03-19",end:"2026-03-30",priority:"High",hours:"10",notes:""}]},
+    { idx:4, daysOff:2, workload:"At Capacity (>90%)", bandwidth:"Limited - small tasks only",
+      tasks:[{deal:"Project Olivine",type:"",start:"2026-03-20",end:"2026-03-21",priority:"High",hours:"14",notes:""},
+             {deal:"Travel",type:"",start:"2026-03-17",end:"2026-03-19",priority:"High",hours:"14",notes:""}]},
+    { idx:5, daysOff:0, workload:"Light (<50%)", bandwidth:"Available - can take new work",
+      tasks:[{deal:"NHU",type:"Screening",start:"2026-03-17",end:"2026-03-19",priority:"Medium",hours:"20",notes:""}]},
+    { idx:6, daysOff:0, workload:"At Capacity (>90%)", bandwidth:"Unavailable - fully committed",
+      tasks:[{deal:"Chime Biologics",type:"IC2 Prep",start:"2026-03-17",end:"2026-03-21",priority:"High",hours:"",notes:""}]},
+    { idx:7, daysOff:0, workload:"Light (<50%)", bandwidth:"Available - can take new work",
+      tasks:[{deal:"ESP Cables",type:"Screening",start:"2026-03-17",end:"2026-03-23",priority:"Medium",hours:"7",notes:""}]},
+    { idx:8, daysOff:3, workload:"Moderate (50-75%)", bandwidth:"Limited - small tasks only",
+      tasks:[{deal:"Food Terminal",type:"Financial Modelling",start:"2026-03-17",end:"2026-03-18",priority:"Medium",hours:"10",notes:""}]}
+  ];
+
+  samples.forEach(s => {
+    const staff = state.staff[s.idx];
+    staff.daysOff = s.daysOff;
+    staff.workload = s.workload;
+    staff.bandwidth = s.bandwidth;
+    staff.weekDate = '2026-03-25';
+    s.tasks.forEach((t, ti) => {
+      staff.tasks[ti] = { ...staff.tasks[ti], ...t };
+    });
+  });
+
+  saveState();
+}
+
+loadSampleData();
+state = loadState();
+buildNav();
+buildStaffPages();
+initGlobalWeek();
+switchPage('dashboard');
+</script>
+</body>
+</html>
