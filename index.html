@@ -763,7 +763,10 @@ function switchPage(pageId) {
     // Manager-only: require PIN to view archive
     const unlocked = sessionStorage.getItem('id_timesheet_archive_unlocked');
     if (unlocked === 'true') {
-      renderArchivePage();
+      try { renderArchivePage(); } catch(e) {
+        document.getElementById('archiveContent').innerHTML = '<div class="card"><div class="card-body"><p style="color:red">Error: '+e.message+'</p></div></div>';
+        console.error('Archive error:', e);
+      }
     } else {
       document.getElementById('archiveContent').innerHTML = `
         <div class="card"><div class="card-body empty-state">
@@ -1026,12 +1029,13 @@ function renderArchivePage() {
   const archives = loadArchives();
   const container = document.getElementById('archiveContent');
 
-  if (archives.length === 0) {
+  if (!archives || archives.length === 0) {
     container.innerHTML = `
       <div class="card">
         <div class="card-body empty-state">
           <h3 style="margin-bottom:8px">No Archived Weeks Yet</h3>
-          <p>Go to Dashboard and click "Archive This Week" to save the current week's data.</p>
+          <p>Go to Dashboard and click "Archive This Week" to save the current week's data.<br>
+          Then come back here to view past weeks and analytics.</p>
         </div>
       </div>`;
     return;
@@ -1113,8 +1117,15 @@ function renderArchivedWeekDetail() {
 function unlockArchive() {
   verifyManager(() => {
     sessionStorage.setItem('id_timesheet_archive_unlocked', 'true');
-    // Re-navigate to archive so it renders properly as active page
-    switchPage('archive');
+    // Ensure archive page is visible
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-archive').classList.add('active');
+    document.querySelectorAll('.nav-btn[data-page]').forEach(b => b.classList.remove('active'));
+    const ab = document.querySelector('.nav-btn[data-page="archive"]');
+    if (ab) ab.classList.add('active');
+    try { renderArchivePage(); } catch(e) {
+      document.getElementById('archiveContent').innerHTML = '<div class="card"><div class="card-body"><p style="color:red">Error: '+e.message+'</p></div></div>';
+    }
     showToast('Archive unlocked for this session.');
   });
 }
