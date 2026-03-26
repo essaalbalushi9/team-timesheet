@@ -2553,6 +2553,11 @@ function loadSampleData() {
   saveState();
 }
 
+// Auto-clear if ?reset=1 in URL
+if (window.location.search.includes('reset=1')) {
+  localStorage.clear();
+  window.history.replaceState({}, '', window.location.pathname);
+}
 loadSampleData();
 state = loadState();
 buildNav();
