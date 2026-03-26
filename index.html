@@ -1415,6 +1415,20 @@ function renderArchivePage() {
   // === Section C: Team Summary ===
   html += buildTeamSummary(archives);
 
+  // === Section D: Year Reset ===
+  html += `
+    <div class="card" style="margin-top:24px;border:2px solid #e53e3e">
+      <div class="card-header" style="background:#e53e3e;color:white">Year Reset</div>
+      <div class="card-body" style="text-align:center;padding:30px">
+        <p style="margin:0 0 8px;font-weight:600">Start a new year with a clean slate</p>
+        <p style="margin:0 0 20px;font-size:13px;color:var(--gray-500)">This will export a backup of all data, then clear all archives and current week entries.<br>Staff names, projects, and settings are kept.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="exportYearData()" style="color:var(--accent)">Export Year Data (Backup)</button>
+          <button class="btn btn-danger btn-sm" onclick="resetYear()">Reset for New Year</button>
+        </div>
+      </div>
+    </div>`;
+
   container.innerHTML = html;
 
   // Render first week detail
@@ -1506,6 +1520,69 @@ function undoDeleteArchive() {
   lastDeletedArchive = null;
   renderArchivePage();
   showToast('Week of ' + weekOf + ' restored.');
+}
+
+function exportYearData() {
+  const archives = loadArchives();
+  if (archives.length === 0) { alert('No archived data to export.'); return; }
+  const firstWeek = archives[archives.length - 1].weekOf;
+  const lastWeek = archives[0].weekOf;
+  const exportData = {
+    exportedAt: new Date().toISOString(),
+    period: firstWeek + ' to ' + lastWeek,
+    totalWeeks: archives.length,
+    archives: archives,
+    currentWeek: { weekOf: getGlobalWeek(), staff: state.staff },
+    projects: state.deals,
+    staffList: state.staff.map(s => ({ name: s.name, role: s.role, manager: s.manager }))
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'timesheet-backup-' + firstWeek + '-to-' + lastWeek + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Year data exported as JSON backup file.');
+}
+
+function resetYear() {
+  if (!checkPIN()) return;
+  const archives = loadArchives();
+  if (archives.length === 0) { alert('No data to reset.'); return; }
+  const firstWeek = archives[archives.length - 1].weekOf;
+  const lastWeek = archives[0].weekOf;
+  if (!confirm('⚠️ YEAR RESET\n\nThis will permanently clear:\n• All ' + archives.length + ' archived weeks (' + firstWeek + ' to ' + lastWeek + ')\n• All current week task entries\n\nStaff names, projects, and PIN are kept.\n\nHave you exported a backup first?')) return;
+  if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+
+  // Clear archives
+  saveArchives([]);
+
+  // Clear current week task data but keep staff identity
+  state.staff.forEach(s => {
+    s.weekDate = '';
+    s.daysOff = 0;
+    s.workload = '';
+    s.bandwidth = '';
+    s.comments = '';
+    s.submitted = false;
+    s.submittedAt = '';
+    s.revision = false;
+    s.revisionNote = '';
+    s.lastEdited = '';
+    s.tasks = [{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''},{deal:'',type:'',start:'',end:'',priority:'',hours:'',notes:''}];
+  });
+  saveState();
+
+  // Reset week to coming Sunday
+  const el = document.getElementById('globalWeek');
+  el.value = toDateStr(getComingSunday());
+  localStorage.setItem('id_timesheet_weekof', el.value);
+  syncStaffDates();
+
+  renderArchivePage();
+  buildStaffPages();
+  showToast('Year reset complete. Fresh start!');
 }
 
 function editArchivedStaff(archIdx, staffIdx, needsPIN) {
@@ -1768,6 +1845,7 @@ function renderInstructionsPage() {
               <li>Request revision on submitted plans</li>
               <li>View archives, staff analytics, and edit past weeks</li>
               <li>Change the manager PIN</li>
+              <li>Year Reset — export backup and start fresh (Archive page, bottom)</li>
             </ul>
           </div>
         </div>
