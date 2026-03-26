@@ -1409,11 +1409,26 @@ function renderArchivePage() {
       </div>
     </div>`;
 
-  // === Section B: Staff Analytics (across all weeks) ===
-  html += buildStaffAnalytics(archives);
-
-  // === Section C: Team Summary ===
-  html += buildTeamSummary(archives);
+  // === Section B: Analytics Range Picker + Staff Analytics + Team Summary ===
+  html += `
+    <div class="card" style="margin-top:24px">
+      <div class="card-header purple">Analytics Range</div>
+      <div class="card-body" style="padding:16px 20px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label style="margin:0;font-weight:600">From:</label>
+          <select id="analyticsFrom" onchange="updateAnalyticsRange()" style="max-width:220px">
+            ${archives.map((a,i) => `<option value="${i}"${i===archives.length-1?' selected':''}>Week of ${a.weekOf}</option>`).join('')}
+          </select>
+          <label style="margin:0;font-weight:600">To:</label>
+          <select id="analyticsTo" onchange="updateAnalyticsRange()" style="max-width:220px">
+            ${archives.map((a,i) => `<option value="${i}"${i===0?' selected':''}>Week of ${a.weekOf}</option>`).join('')}
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="resetAnalyticsRange()" style="color:var(--accent)">Reset to All</button>
+          <span id="analyticsRangeInfo" style="font-size:13px;color:var(--gray-500)"></span>
+        </div>
+      </div>
+    </div>`;
+  html += `<div id="analyticsContainer"></div>`;
 
   // === Section D: Year Reset ===
   html += `
@@ -1433,6 +1448,35 @@ function renderArchivePage() {
 
   // Render first week detail
   renderArchivedWeekDetail();
+  // Render analytics with all weeks by default
+  updateAnalyticsRange();
+}
+
+function updateAnalyticsRange() {
+  const archives = loadArchives();
+  const fromEl = document.getElementById('analyticsFrom');
+  const toEl = document.getElementById('analyticsTo');
+  if (!fromEl || !toEl || archives.length === 0) return;
+  // Archives are newest-first, so "from" has higher index (older), "to" has lower index (newer)
+  const fromIdx = parseInt(fromEl.value);
+  const toIdx = parseInt(toEl.value);
+  // Ensure from is older than to (higher index = older)
+  const startIdx = Math.min(fromIdx, toIdx);
+  const endIdx = Math.max(fromIdx, toIdx);
+  const filtered = archives.slice(startIdx, endIdx + 1);
+  const info = document.getElementById('analyticsRangeInfo');
+  if (info) info.textContent = filtered.length + ' week' + (filtered.length !== 1 ? 's' : '') + ' selected';
+  const container = document.getElementById('analyticsContainer');
+  if (!container) return;
+  container.innerHTML = buildStaffAnalytics(filtered) + buildTeamSummary(filtered);
+}
+
+function resetAnalyticsRange() {
+  const archives = loadArchives();
+  if (archives.length === 0) return;
+  document.getElementById('analyticsFrom').value = archives.length - 1; // oldest
+  document.getElementById('analyticsTo').value = 0; // newest
+  updateAnalyticsRange();
 }
 
 function renderArchivedWeekDetail() {
