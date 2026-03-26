@@ -250,6 +250,8 @@
   .stat-red .number { color: var(--red); }
   .stat-blue .number { color: var(--primary); }
   .stat-purple .number { color: #805ad5; }
+  .stat-orange { border-top: 3px solid #dd6b20; }
+  .stat-orange .number { color: #dd6b20; }
 
   /* Dashboard table */
   .dash-table { width: 100%; border-collapse: collapse; }
@@ -307,7 +309,17 @@
   .toast.show { transform: translateY(0); opacity: 1; }
 
   /* Responsive table wrapper */
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { overflow-x: auto; position: relative; }
+  @media (max-width: 768px) {
+    .table-wrap::after {
+      content: '← scroll →';
+      display: block;
+      text-align: center;
+      font-size: 11px;
+      color: #a0aec0;
+      padding: 4px 0;
+    }
+  }
 
   /* Section divider */
   .section-note {
@@ -1227,7 +1239,8 @@ function renderDashboard() {
 
   const active = state.staff.filter(s => s.name);
   const submitted = active.filter(s => s.submitted);
-  const pending = active.filter(s => !s.submitted);
+  const revision = active.filter(s => !s.submitted && s.revision);
+  const pending = active.filter(s => !s.submitted && !s.revision);
   const revisions = active.filter(s => s.revision);
   const available = active.filter(s => s.bandwidth && s.bandwidth.includes('Available'));
   const archCount = loadArchives().length;
@@ -1237,25 +1250,39 @@ function renderDashboard() {
   const dayOfWeek = today.getDay(); // 5=Fri, 6=Sat, 0=Sun
   const pastDeadline = (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0);
   const lateNames = pending.map(s => s.name);
+  const revisionNames = revision.map(s => s.name);
 
   document.getElementById('dashStats').innerHTML = `
     <div class="stat-card stat-blue"><div class="number">${active.length}</div><div class="label">Active Staff</div></div>
     <div class="stat-card stat-green"><div class="number">${submitted.length}</div><div class="label">Submitted</div></div>
     <div class="stat-card ${pending.length > 0 ? 'stat-red' : 'stat-green'}"><div class="number">${pending.length}</div><div class="label">Pending</div></div>
+    ${revision.length > 0 ? `<div class="stat-card stat-orange"><div class="number">${revision.length}</div><div class="label">Revision</div></div>` : ''}
     <div class="stat-card stat-green"><div class="number">${available.length}</div><div class="label">Available</div></div>
     <div class="stat-card stat-purple"><div class="number">${archCount}</div><div class="label">Weeks Archived</div></div>
   `;
 
   // Late submission warning banner
-  if (pastDeadline && lateNames.length > 0) {
-    document.getElementById('dashStats').innerHTML += `
-      <div style="grid-column:1/-1;background:#fed7d7;border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:12px">
+  if (pastDeadline && (lateNames.length > 0 || revisionNames.length > 0)) {
+    let bannerHtml = '';
+    if (lateNames.length > 0) {
+      bannerHtml += `<div style="grid-column:1/-1;background:#fed7d7;border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:12px">
         <span style="font-size:24px">⚠</span>
         <div>
           <strong style="color:#822727">Past Thursday deadline — ${lateNames.length} staff haven't submitted:</strong>
           <div style="color:#822727;font-size:13px;margin-top:4px">${lateNames.join(', ')}</div>
         </div>
       </div>`;
+    }
+    if (revisionNames.length > 0) {
+      bannerHtml += `<div style="grid-column:1/-1;background:#fefcbf;border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px">🔄</span>
+        <div>
+          <strong style="color:#744210">${revisionNames.length} staff awaiting revision:</strong>
+          <div style="color:#744210;font-size:13px;margin-top:4px">${revisionNames.join(', ')}</div>
+        </div>
+      </div>`;
+    }
+    document.getElementById('dashStats').innerHTML += bannerHtml;
   }
 
   // Availability table
@@ -2063,7 +2090,10 @@ function showToast(msg) {
 
 // ========== DATE HELPERS ==========
 function toDateStr(d) {
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
 }
 
 function getComingSunday() {
